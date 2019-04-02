@@ -1,9 +1,3 @@
-########################################################################
-#
-# $Id: sqgui.tcl,v 1.0 
-#
-# create package and namespace and default all namespace global variables.
-
 namespace eval ::SQGUI:: {
     namespace export sqgui
 
@@ -11,7 +5,6 @@ namespace eval ::SQGUI:: {
     variable version    "1.0";      # plugin version  
 
     variable vmd_Path   "";         # VMD environment path
-    variable mol_file       "-1";   # file descriptor of the molecule file to be used  
     variable input_file_path  "";   # absolute path of the input molecule file 
 
     variable molid       "-1";      # molid of the molecule to grab
@@ -50,8 +43,7 @@ namespace eval ::SQGUI:: {
 
     variable displayAtoms "1";      # 1: display atoms, 0: display molecles
     variable addBeta      "1";      # 1: add betas by rank 0: add betas by contribution score
-    variable ffWeightedContribution "0";    # 1: checked- use form factor weighted contributions for ranking, 0: unchecked
-
+    
     variable cannotplot   "0";      # is multiplot available?
     variable enableStatistics 0;    # control varibale to decide whether the computer rankings button and corresponding controls should be enabled
     variable enableSelections 0;    # control varibale to decide whether the controls related to selections should be enabled
@@ -60,8 +52,6 @@ namespace eval ::SQGUI:: {
     variable SQ_plot       "";      # Handler for S(Q) plot window
     variable x_SQ      "";          # S(q) plot X values
     variable y_SQ      "";          # S(q) plot Y values
-
-    variable display_FormFactorWeighted_Results 1;  # variable to turn off displaying formfactor weighted results if no hoogenous element tyoes exist in the selections.
 
     variable vis_selection1 "";             # Selection 1 for visualization
     variable selection1_colorId 0;          # colorID for selection 1
@@ -107,19 +97,15 @@ namespace eval ::SQGUI:: {
     set allPairsAggregated_weights [dict create];               # stores the aggregated weights of all the group pairs
     set group_pair_s_q [dict create];                           # stores the partial S(q)s of all group pairs
     set ff_weighted_group_pair_s_q [dict create];               # stores the formfactor weighted partial S(q)s of all group pairs
-    set ff_weighted_group_pair_s_q_full_denom [dict create];    # stores the formfactor weighted partial S(q)s of all group pairs
     set rbin_contributions_for_total_S_q {};                    # stores r bin contributions for total S(q) at each q for selections
     set rbin_contributions_for_ff_weighted_S_q {};              # stores r bin contributions for form factored weighted S(q) at each q for selections
-    set rbin_contributions_for_ff_weighted_S_q_full_denom {};   # stores r bin contributions for form factored weighted S(q) with full denominator at each q for selections
     set total_S_q_pos_contributions [dict create];              # stores +ve contributions of r bins at each q for total s(q)
     set total_S_q_neg_contributions [dict create];              # stores -ve contributions of r bins at each q for total s(q)
     set selection_S_q_pos_contributions [dict create];          # stores +ve contributions of r bins at each q for s(q) for selections
     set selection_S_q_neg_contributions [dict create];          # stores -ve contributions of r bins at each q for s(q) for selections
     set selection_weighted_S_q_pos_contributions [dict create]; # stores +ve contributions of r bins at each q for form factor weighted s(q) for selections
     set selection_weighted_S_q_neg_contributions [dict create]; # stores -ve contributions of r bins at each q for form factor weighted s(q) for selections
-    set selection_weighted_S_q_pos_contributions_full_denom [dict create]; # stores +ve contributions of r bins at each q for form factor weighted s(q) (full denominator) for selections 
-    set selection_weighted_S_q_neg_contributions_full_denom [dict create]; # stores -ve contributions of r bins at each q for form factor weighted s(q) (full denominator) for selections
-
+    
     set selection_atoms_counts [dict create];                   # Stores counts for each atom in the selection
     set all_atoms_counts [dict create];                         # Stores counts for each atom in the input file
     set possible_sq_contributions {};                           # Stores the S(q) values and positive and negative contributions to s(q) at each q for a count 1 at all possible bins.
@@ -140,8 +126,6 @@ namespace eval ::SQGUI:: {
     set group_matrices [dict create]
     set group_bulk_stats [dict create]
     set group_pair_num_atoms [dict create]
-    set same_molecule_counts {}
-    set different_molecule_counts {}
     variable pi "3.1415926535897931";
 }
 
@@ -149,358 +133,6 @@ package provide sqgui $SQGUI::version
 
 #################
 proc ::SQGUI::ladd {l} {::tcl::mathop::+ {*}$l}
-
-proc ::SQGUI::UpdateRenderer {val} {
-    
-    global topN_Sorted
-    global rank_plot
-    global selection_atom_contributions
-    global atoms_groupNames
-    global group_formfactors
-
-    variable w
-    variable molid
-    variable displayAtoms
-    variable addBeta
-    variable input_file_path
-    variable min_q
-    variable max_q
-    variable delta_q
-    variable leftBin
-    variable rightBin 
-
-    variable vis_selection1
-    variable selection1_colorId
-    variable selection1_color_method
-    variable selection1_material
-    variable selection1_draw_method
-    variable vis_selection2
-    variable selection2_colorId
-    variable selection2_color_method
-    variable selection2_material
-    variable selection2_draw_method
-    variable vis_selection3
-    variable selection3_colorId
-    variable selection3_color_method
-    variable selection3_material
-    variable selection3_draw_method
-    variable vis_selection4
-    variable selection4_colorId
-    variable selection4_color_method
-    variable selection4_material
-    variable selection4_draw_method
-    variable vis_selection5
-    variable selection5_colorId
-    variable selection5_color_method
-    variable selection5_material
-    variable selection5_draw_method
-    variable atom_beta_by_Rank_Sorted
-    variable atom_beta_by_Score_Sorted
-    variable atom_beta_by_Score
-    variable molecule_beta_by_Rank
-    variable molecule_beta_by_Score
-
-    set selected_atoms "serial"
-    set selected_atom [$w.in2.topNframe.bt get]
-    set selected_topnN [$w.in2.topNframe.at get]
-    set molecule_beta_by_Rank {}
-    set molecule_beta_by_Score {}
-    set molecule_beta_by_Rank_Sorted {}
-    set molecule_beta_by_Score_Sorted {}
-    set neighbor_beta_by_Score {}
-    set neighbor_beta_by_Rank {}
-    set x_bins {}
-    set y_bins {}
-
-    display update off
-    color scale method BWR
-    display update on
-    for {set i 0} {$i < 7} {incr i} {
-        mol delrep 0 top
-    }
-    if {$selected_atom == 0} {
-        set sorted_atoms "serial "
-        foreach {pair} $topN_Sorted {     
-            append sorted_atoms "[lindex $pair 0] "    
-        }
-        foreach {pair} [lrange $topN_Sorted 0 [expr $selected_topnN -1]] {     
-            set selected_atoms [concat $selected_atoms " " [lindex $pair 0]]                                
-        }
-        
-        if {$displayAtoms} then { 
-            set sel1Str $selected_atoms
-            set sel2Str $selected_atoms
-            set sel3Str $selected_atoms
-            set sel4Str $selected_atoms
-            set sel5Str $selected_atoms
-
-        } else {
-            
-            set sel1Str "same resid as ( $selected_atoms )"
-            set sel2Str "same resid as ( $selected_atoms )"
-            set sel3Str "same resid as ( $selected_atoms )"
-            set sel4Str "same resid as ( $selected_atoms )"
-            set sel5Str "same resid as ( $selected_atoms )"
-        }               
-    } else {
-        set neighbour_contributions_file $input_file_path            
-        append neighbour_contributions_file "neighbour_contributions_sq.dat"
-        set tstfile [open $neighbour_contributions_file r]
-        set topN_list {}
-        set required_atoms [dict keys $selection_atom_contributions]
-        # puts "required: $required_atoms"
-        while { [gets $tstfile line] >= 0 } {
-            set startIdx 0
-            set curIdx [string first "\{" $line $startIdx]        
-            if {$curIdx > 0} {
-                set atom_key [string trim [string range $line 0 [expr $curIdx-1]] "\{\} " ]
-                if {$atom_key == $selected_atom} { 
-                    incr readLinesCnt
-                    set neighbour_total_contribution {}
-                    set startIdx [expr $curIdx +1]
-                    set curIdx [string first "\{" $line $startIdx ]             
-                    while {$curIdx > 0} {
-                        set neighbour_key [string trim [string range $line $startIdx [expr $curIdx-1]] "\{\} " ]                        
-                        set curEndIdx [string first "\}" $line [expr $curIdx+1] ]  
-                        if {[lsearch -exact $required_atoms $neighbour_key] >= 0} { 
-                            # puts "neighbour: $neighbour_key"
-                            set startIdx [expr $curIdx +1]
-                            set neighbour_Sq [split [string trim [string range $line $startIdx [expr $curEndIdx-1]] "\{\} " ] " "]
-
-                            set s_q_for_selection 0
-                            set q_idx 0
-                            for {set cur_q $min_q} {$cur_q <= $rightBin} {set cur_q [expr {$cur_q + $delta_q}]} {
-                                if {$cur_q >= $leftBin} {
-                                    set s_q_for_selection [expr $s_q_for_selection + [lindex $neighbour_Sq $q_idx]]  
-                                }
-                                incr q_idx
-                            }
-                            set key_group [dict get $atoms_groupNames $neighbour_key]
-                            set key_ff [dict get $group_formfactors $key_group]
-                            lappend topN_list [list $neighbour_key $s_q_for_selection $key_group]
-                        }
-                        set startIdx [expr $curEndIdx + 1]
-                        set curIdx [string first "\{" $line $startIdx]                    
-                    }
-                    # puts "neighbor atoms: $topN_list"
-                    break                
-                }
-            }              
-        }
-        close $tstfile
-
-        set topN_Neighbours_Sorted [lsort -real -index 1 -decreasing $topN_list]
-        set cntr 0
-        set sorted_atoms "serial "
-        set atom_properties {}
-
-        foreach {pair} $topN_Neighbours_Sorted {
-            incr cntr
-            lappend x_bins $cntr
-            lappend y_bins [lindex $pair 1]
-            append sorted_atoms "[lindex $pair 0] "
-            lappend neighbor_beta_by_Rank [list [lindex $pair 0] $cntr]
-            lappend neighbor_beta_by_Score [list [lindex $pair 0] [lindex $pair 1]]
-
-            set tmpsel [atomselect $molid "serial [lindex $pair 0]"]
-            set cur_atom_props "[lindex $pair 2],"
-            append cur_atom_props [join [$tmpsel get {type name residue resname resid chain}] ","]
-            set cur_atom_props [join $cur_atom_props ","]
-            lappend atom_properties "$cur_atom_props"           
-        }  
-
-        set neighbor_beta_by_Rank [lsort -real -index 0 $neighbor_beta_by_Rank]    
-        set neighbor_beta_by_Score [lsort -real -index 0 $neighbor_beta_by_Score]   
-        set neighbor_beta_by_Rank_Sorted {}
-        set neighbor_beta_by_Score_Sorted {}
-        for {set i_beta 0} {$i_beta < [llength $neighbor_beta_by_Rank]} {incr i_beta} {
-             lappend neighbor_beta_by_Rank_Sorted [lindex [lindex $neighbor_beta_by_Rank $i_beta] 1]
-             lappend neighbor_beta_by_Score_Sorted [lindex [lindex $neighbor_beta_by_Score $i_beta] 1]
-         } 
-
-        if {[catch {$rank_plot quit} ]} then {}
-        set rank_plot [multiplot -x $x_bins -y $y_bins -title "Top Neighbors" -lines -linewidth 2 -marker point -plot ]   
-        $rank_plot add $x_bins $atom_properties       
-
-        foreach {pair} [lrange $topN_Neighbours_Sorted 0 [expr $selected_topnN -1]] {     
-            set selected_atoms [concat $selected_atoms " " [lindex $pair 0]]
-        }
-        
-        if {$displayAtoms} then { 
-            set sel1Str $selected_atoms
-            set sel2Str $selected_atoms
-            set sel3Str $selected_atoms
-            set sel4Str $selected_atoms
-            set sel5Str $selected_atoms
-        } else {
-            
-            set sel1Str "same resid as ( $selected_atoms )"
-            set sel2Str "same resid as ( $selected_atoms )"
-            set sel3Str "same resid as ( $selected_atoms )"
-            set sel4Str "same resid as ( $selected_atoms )"
-            set sel5Str "same resid as ( $selected_atoms )"
-        }    
-    }  
-
-    if {$displayAtoms} {
-        set sel_all [atomselect $molid $sorted_atoms ]        
-        if {$addBeta} {
-            #atoms by rank
-            $sel_all set beta 0
-            if {$selected_atom == 0} {
-                $sel_all set beta $atom_beta_by_Rank_Sorted
-            } else {
-                $sel_all set beta $neighbor_beta_by_Rank_Sorted
-            }
-        } else {
-            #atoms by score
-            $sel_all set beta 0
-
-            if {$selected_atom == 0} {
-                $sel_all set beta $atom_beta_by_Score_Sorted
-            } else {
-                $sel_all set beta $neighbor_beta_by_Score_Sorted
-            }
-        }
-    } else {
-        
-        set all_atoms_test [atomselect $molid "all"]
-        $all_atoms_test set beta 0
-        set all_molecules [$all_atoms_test get {serial resid}]
-
-        set sel_atoms [atomselect $molid $selected_atoms ]        
-        set selected_molecules [ $sel_atoms get {serial resid}]
-        set molecules_count [dict create]
-        set molecules_score [dict create]
-
-        if {$addBeta} {
-            #molecules by rank
-            foreach var $selected_molecules {
-                if {[dict exists $molecules_count [lindex $var 1]]} then {
-                    dict set molecules_count [lindex $var 1] [expr [dict get $molecules_count [lindex $var 1]] + 1]
-                } else {
-                    dict set molecules_count [lindex $var 1] 1
-                }
-            }
-            foreach var $all_molecules {
-                if {[dict exists $molecules_count [lindex $var 1]]} then {
-                    lappend molecule_beta_by_Rank [dict get $molecules_count [lindex $var 1]]
-                } else {
-                    lappend molecule_beta_by_Rank 0
-                }            
-            }
-
-            $all_atoms_test set beta $molecule_beta_by_Rank
-        } else {
-            #molecules by score
-            set idx 0
-            foreach var $selected_molecules {
-                set tmp_score 0
-                if {$selected_atom == 0} {
-                    set tmp_score [lindex $atom_beta_by_Score_Sorted [lindex $var 0]]
-                } else {
-                    set tmp_score [lindex $y_bins $idx]
-                }
-                if {[dict exists $molecules_score $var]} then {
-                    dict set molecules_score [lindex $var 1] [expr [dict get $molecules_score [lindex $var 1]] + $tmp_score]
-                } else {
-                    dict set molecules_score [lindex $var 1] $tmp_score
-                }
-                incr idx
-            }
-            foreach var $all_molecules {
-                if {[dict exists $molecules_score [lindex $var 1]]} then {
-                    lappend molecule_beta_by_Score [dict get $molecules_score [lindex $var 1]]
-                } else {
-                    lappend molecule_beta_by_Score 0
-                } 
-            }
-
-            puts "rank - $molecule_beta_by_Score"
-            $all_atoms_test set beta $molecule_beta_by_Score
-        }
-    } 
-
-    if {$vis_selection1 != ""} {            
-        append sel1Str " and $vis_selection1"
-        # puts "sel1Str: $sel1Str"
-        # puts "Color Method: $selection1_color_method"
-        # puts "ID: $selection1_colorId"
-        # puts "material: $selection1_material"
-        # puts "Draw Method: $selection1_draw_method"
-        set sel1 [atomselect $molid $sel1Str ] 
-        mol selection "[$sel1 text]" 
-        if {$selection1_color_method=="ColorID"} then {
-            mol color ColorID $selection1_colorId
-        } else {
-            mol color $selection1_color_method
-        }
-        mol material $selection1_material                
-        mol representation $selection1_draw_method
-        mol addrep top
-    }
-    if {$vis_selection2 != ""} {
-        append sel2Str " and $vis_selection2"
-        set sel2 [atomselect $molid $sel2Str ] 
-        mol selection "[$sel2 text]" 
-        if {$selection2_color_method=="ColorID"} then {
-            mol color ColorID $selection2_colorId
-        } else {
-            mol color $selection2_color_method
-        }
-        mol material $selection2_material                
-        mol representation $selection2_draw_method
-        mol addrep top
-    }
-    if {$vis_selection3 != ""} {
-        append sel3Str " and $vis_selection3"
-        set sel3 [atomselect $molid $sel3Str ] 
-        mol selection "[$sel3 text]" 
-        if {$selection3_color_method=="ColorID"} then {
-            mol color ColorID $selection3_colorId
-        } else {
-            mol color $selection3_color_method
-        }
-        mol material $selection3_material                
-        mol representation $selection3_draw_method
-        mol addrep top
-    }
-    if {$vis_selection4 != ""} {
-        append sel4Str " and $vis_selection4"
-        set sel4 [atomselect $molid $sel4Str ] 
-        mol selection "[$sel4 text]" 
-        if {$selection4_color_method=="ColorID"} then {
-            mol color ColorID $selection4_colorId
-        } else {
-            mol color $selection4_color_method
-        }
-        mol material $selection4_material                
-        mol representation $selection4_draw_method
-        mol addrep top
-    }
-    if {$vis_selection5 != ""} {
-        append sel1Str " and $vis_selection5"
-        set sel5 [atomselect $molid $sel1Str ] 
-        mol selection "[$sel5 text]" 
-        if {$selection5_color_method=="ColorID"} then {
-            mol color ColorID $selection5_colorId
-        } else {
-            mol color $selection5_color_method
-        }
-        mol material $selection5_material                
-        mol representation $selection5_draw_method
-        mol addrep top
-    } 
-
-    if {$selected_atom != 0} {
-        set chosenAtom "serial $selected_atom"
-        set atom_sel [atomselect $molid $chosenAtom]  
-        mol selection "[$atom_sel text]" 
-        mol color ColorID 8
-        mol representation VDW
-        mol addrep top 
-    }
-}
 
 proc ::SQGUI::get_g_r {temp_y} {
     variable delta
@@ -645,21 +277,6 @@ proc ::SQGUI::get_s_q {y_gofr contributions_file_path} {
     return [list $sqx $sqy $maxIdx]
 }
 
-proc ::SQGUI::convertListToDict {valuesList} {
-    variable delta
-    variable rmax
-    
-    set pairsDict [dict create]
-    set numbins [expr $rmax / $delta]
-    
-    for {set r 0} {$r < $numbins} {incr r} {
-        if {[lindex $valuesList $r] >0} {
-            dict append pairsDict $r [lindex $valuesList $r]
-        }
-    }
-    return $pairsDict
-}
-
 proc ::SQGUI::get_partial_s_q {y_gofr contributions_file_path element_pair pair_weight} {
     global selection_S_q_pos_contributions
     global selection_S_q_neg_contributions
@@ -680,7 +297,6 @@ proc ::SQGUI::get_partial_s_q {y_gofr contributions_file_path element_pair pair_
     set pos_neg_lines {}
     set rbin_contributions_to_S_q {}    
     set adjusted_max_q [expr $max_q + [expr $delta_q / 100]]
-    # [dict create]
 
     ### add code write the rbin_contributions values to a file (for each ele-pair, for each q add all rbin_contributions)
     if {[string length $contributions_file_path]} {
@@ -817,11 +433,11 @@ proc ::SQGUI::get_partial_s_q_with_contributions {y_gofr pair_weight} {
     return [list $sqy $s_q_pos_contributions $s_q_neg_contributions]
 }
 
-proc ::SQGUI::get_formfactor_weighted_partial_s_q {y_gofr weight pair_formfactor_list same_pair_weights same_pair_formfactors contributions_file_path element_pair is_full_denom} {
+proc ::SQGUI::get_formfactor_weighted_partial_s_q {y_gofr weight pair_formfactor_list contributions_file_path element_pair } {
     global selection_weighted_S_q_pos_contributions
     global selection_weighted_S_q_neg_contributions
-    global selection_weighted_S_q_pos_contributions_full_denom
-    global selection_weighted_S_q_neg_contributions_full_denom
+    global all_same_elements_weights
+    global all_same_group_pair_formfactors
 
     set tcl_precision 12
     variable delta
@@ -831,7 +447,6 @@ proc ::SQGUI::get_formfactor_weighted_partial_s_q {y_gofr weight pair_formfactor
     variable max_q
     variable delta_q
     variable density
-    variable display_FormFactorWeighted_Results
 
     set numbins [expr $rmax / $delta]
     set maxIdx 0
@@ -841,7 +456,6 @@ proc ::SQGUI::get_formfactor_weighted_partial_s_q {y_gofr weight pair_formfactor
     set i_idx 0
     set rbin_contributions_to_ff_S_q {}
     set adjusted_max_q [expr $max_q + [expr $delta_q / 100]]
-    #[dict create]
 
     ### add code write the rbin_contributions values to a file (for each ele-pair, for each q add all rbin_contributions)
     if {[string length $contributions_file_path]} {
@@ -864,19 +478,15 @@ proc ::SQGUI::get_formfactor_weighted_partial_s_q {y_gofr weight pair_formfactor
         set neg_contribution 0
         set formfactor [lindex $pair_formfactor_list $i_idx]
         set denominator_at_q 0
-        for {set k 0} {$k < [llength $same_pair_weights]} {incr k} {
-            set pair_weight [lindex $same_pair_weights $k]
-            set pair_formfactor [lindex $same_pair_formfactors $k]
+        for {set k 0} {$k < [llength $all_same_elements_weights]} {incr k} {
+            set pair_weight [lindex $all_same_elements_weights $k]
+            set pair_formfactor [lindex $all_same_group_pair_formfactors $k]
             set element_weight [expr { sqrt($pair_weight) }]
             set pair_formfactor_at_q [lindex $pair_formfactor $i_idx]
             set element_formfactor_at_q [expr { sqrt($pair_formfactor_at_q) }]
             set denominator_at_q [expr $denominator_at_q + [expr $element_weight * $element_formfactor_at_q]]
         }
 
-        if {$denominator_at_q == 0} then {
-            set display_FormFactorWeighted_Results 0
-            return
-        }
         set denominator_at_q [expr $denominator_at_q * $denominator_at_q]
 
         for {set r 0} {$r < $numbins} {incr r} {
@@ -900,30 +510,16 @@ proc ::SQGUI::get_formfactor_weighted_partial_s_q {y_gofr weight pair_formfactor
             }
         }
 
-        if {$is_full_denom} then {
-            if {[dict exists $selection_weighted_S_q_pos_contributions_full_denom $varx]==1} then {
-                dict set selection_weighted_S_q_pos_contributions_full_denom $varx [expr $pos_contribution + [dict get $selection_weighted_S_q_pos_contributions_full_denom $varx]]
-            } else {
-                dict append selection_weighted_S_q_pos_contributions_full_denom $varx $pos_contribution 
-            }
-
-            if {[dict exists $selection_weighted_S_q_neg_contributions_full_denom $varx]==1} then {
-                dict set selection_weighted_S_q_neg_contributions_full_denom $varx [expr $neg_contribution + [dict get $selection_weighted_S_q_neg_contributions_full_denom $varx]]
-            } else {            
-                dict append selection_weighted_S_q_neg_contributions_full_denom $varx $neg_contribution
-            }
+        if {[dict exists $selection_weighted_S_q_pos_contributions $varx]==1} then {
+            dict set selection_weighted_S_q_pos_contributions $varx [expr $pos_contribution + [dict get $selection_weighted_S_q_pos_contributions $varx]]
         } else {
-            if {[dict exists $selection_weighted_S_q_pos_contributions $varx]==1} then {
-                dict set selection_weighted_S_q_pos_contributions $varx [expr $pos_contribution + [dict get $selection_weighted_S_q_pos_contributions $varx]]
-            } else {
-                dict append selection_weighted_S_q_pos_contributions $varx $pos_contribution 
-            }
+            dict append selection_weighted_S_q_pos_contributions $varx $pos_contribution 
+        }
 
-            if {[dict exists $selection_weighted_S_q_neg_contributions $varx]==1} then {
-                dict set selection_weighted_S_q_neg_contributions $varx [expr $neg_contribution + [dict get $selection_weighted_S_q_neg_contributions $varx]]
-            } else {            
-                dict append selection_weighted_S_q_neg_contributions $varx $neg_contribution
-            }
+        if {[dict exists $selection_weighted_S_q_neg_contributions $varx]==1} then {
+            dict set selection_weighted_S_q_neg_contributions $varx [expr $neg_contribution + [dict get $selection_weighted_S_q_neg_contributions $varx]]
+        } else {            
+            dict append selection_weighted_S_q_neg_contributions $varx $neg_contribution
         }
 
         lappend rbin_contributions_to_ff_S_q $rbin_contributions
@@ -959,6 +555,21 @@ proc ::SQGUI::get_formfactor_weighted_partial_s_q {y_gofr weight pair_formfactor
         close $fp
     }
     return [list $sqx $sqy $rbin_contributions_to_ff_S_q]
+}
+
+proc ::SQGUI::convertListToDict {valuesList} {
+    variable delta
+    variable rmax
+    
+    set pairsDict [dict create]
+    set numbins [expr $rmax / $delta]
+    
+    for {set r 0} {$r < $numbins} {incr r} {
+        if {[lindex $valuesList $r] >0} {
+            dict append pairsDict $r [lindex $valuesList $r]
+        }
+    }
+    return $pairsDict
 }
 
 proc ::SQGUI::runSofQ {} {
@@ -1224,350 +835,12 @@ proc ::SQGUI::runSofQ {} {
     ProcessAllsubGroupPairs
 
     set auto_call 0
-    computePartialsForSelections $allPairsAggregated_counts $allPairsAggregated_weights $all_same_elements_weights $all_same_group_pair_formfactors 1 1
+    computePartialsForSelections $allPairsAggregated_counts $allPairsAggregated_weights
     puts "Completed!"
 
     set enableSelections 1
     EnDisable
     $w.foot configure -state disabled
-}
-
-proc ::SQGUI::ProcessAllsubGroupPairs {} {
-    global bin_totals
-    global subGroupPair_counts
-    global allPairsAggregated_counts
-    global allPairsAggregated_weights
-    global all_same_elements_weights
-    global all_same_group_pair_formfactors
-    global groupPair_formfactors 
-    global all_atoms_counts
-    global possible_sq_contributions
-    global all_atom_contributions
-    global possible_sq_contribution_differences
-
-    set allPairsAggregated_counts [dict create]
-    set allPairsAggregated_weights [dict create]
-    set all_same_elements_weights {}
-    set all_same_group_pair_formfactors {}
-    set all_atoms_counts [dict create]
-    set all_atom_contributions [dict create] 
-    set unit_sofqs [dict create]
-    set write_to_file 0    
-    set fp {}   
-
-    variable total_distances_count
-    variable auto_call
-    variable input_file_path
-
-    set neighbour_contributions_file $input_file_path
-    set write_to_file 0
-    append neighbour_contributions_file "neighbour_contributions_sq.dat"
-    if {[catch {open $neighbour_contributions_file w} fp]} then {
-        set got_Error 1
-        tk_dialog .errmsg {viewSq Error} "There was an error opening the file '$neighbour_contributions_file'" error 0 Dismiss
-    } else {
-        set write_to_file 1     
-    }    
-    
-    for {set bin_i 0} {$bin_i < [llength $bin_totals]} {incr bin_i} {
-
-        set cur_bin_counts_dict [dict create]
-        set cur_grp_pair_counts_dict {}
-        set pair_weight [expr double([lindex $bin_totals $bin_i]) / $total_distances_count]
-
-        # Compute g(r) for current bin with count across all pairs              
-        dict append cur_bin_counts_dict $bin_i [lindex $bin_totals $bin_i]
-        set partial_gofr_result [get_partial_g_r $cur_bin_counts_dict $pair_weight]
-        set y_partial_gofr [lindex $partial_gofr_result 1]
-        
-        # Compute s(q) using above g(r)
-        set partial_sofq_result [get_partial_s_q_with_contributions $y_partial_gofr $pair_weight]
-        set y_partial_sofq [lindex $partial_sofq_result 0] 
-        set s_q_pos_contributions [lindex $partial_sofq_result 1] 
-        set s_q_neg_contributions [lindex $partial_sofq_result 2] 
-
-        # Get the magnitude of S(q) at each q and divide it by total count to get S(q) per unit
-        if {[lindex $bin_totals $bin_i]>0} then {
-            set sofq_per_unit {}
-            foreach sofq $y_partial_sofq {
-                ####### abs($sofq)
-                lappend sofq_per_unit [expr $sofq / [lindex $bin_totals $bin_i]]
-            }
-            dict append unit_sofqs $bin_i $sofq_per_unit
-        }
-    }
-    
-    foreach subgrp_pair [dict keys $subGroupPair_counts] {
-
-        set subGroups [split $subgrp_pair " "]
-        set subGroup1_parts [split [lindex $subGroups 0] ":"]
-        set subGroup2_parts [split [lindex $subGroups 1] ":"]
-        set group1_name ""
-        set group2_name ""
-        set atom_i ""
-        set atom_j ""
-        if {[llength $subGroup1_parts]==2} then {
-            set group1_name "[lindex $subGroup1_parts 0]\]"         
-            set atom_i [lindex $subGroup1_parts 1] 
-        } else {            
-            set group1_name "[lindex $subGroup1_parts 0]:[lindex $subGroup1_parts 1]\]"
-            set atom_i [lindex $subGroup1_parts [expr [llength $subGroup1_parts]-1]]
-        }
-        if {[llength $subGroup2_parts]==2} then {
-            set group2_name "[lindex $subGroup2_parts 0]\]"
-            set atom_j [lindex $subGroup2_parts 1]
-        } else {
-            set group2_name "[lindex $subGroup2_parts 0]:[lindex $subGroup2_parts 1]\]"
-            set atom_j [lindex $subGroup2_parts [expr [llength $subGroup2_parts]-1]]
-        }
-
-        set atom_i [string range $atom_i 0 end-1]
-        set atom_j [string range $atom_j 0 end-1]
-
-        set grp_pair "$group1_name $group2_name"
-        set grp_pair_reverse "$group2_name $group1_name"
-        set counts [dict get $subGroupPair_counts $subgrp_pair]
-        
-        if { [dict exists $allPairsAggregated_counts $grp_pair] ==1 } then {
-            dict lappend allPairsAggregated_counts $grp_pair $counts    
-        } elseif { [dict exists $allPairsAggregated_counts $grp_pair_reverse] ==1 } then {  
-            dict lappend allPairsAggregated_counts $grp_pair_reverse $counts
-        } else {
-            dict lappend allPairsAggregated_counts $grp_pair $counts                
-        }
-
-        dict lappend all_atoms_counts $atom_i [list $atom_j $counts]
-        dict lappend all_atoms_counts $atom_j [list $atom_i $counts]    
-    }
-    
-    set cur_atom_count_1 [dict create]
-    # set total_counts [dict create]
-    set atoms_count [llength [dict keys $all_atoms_counts]]
-    set counter 1
-    foreach atom [dict keys $all_atoms_counts] {
-        set cur_atom_counts_list [dict get $all_atoms_counts $atom]
-        set cur_atom_counts_dict [dict create]
-        
-        # Aggregate the counts in each atom by bin numbers      
-        foreach item $cur_atom_counts_list {
-            set paired_with_atom [lindex $item 0]
-            set bin_counts [lindex $item 1]
-            foreach key [dict keys $bin_counts] {
-                set paired_with_atom_dict [dict create]
-                if {[dict exists $cur_atom_counts_dict $key]} then {
-                    set paired_with_atom_dict [dict get $cur_atom_counts_dict $key]
-                    
-                    if {[dict exists $paired_with_atom_dict $paired_with_atom]} then {                      
-                        dict set paired_with_atom_dict $paired_with_atom [expr [dict get $paired_with_atom_dict $paired_with_atom] + [expr [dict get $bin_counts $key] / 2]]
-                    } else {
-                        dict append paired_with_atom_dict $paired_with_atom [expr [dict get $bin_counts $key] / 2]
-                    }
-                } else {
-                    dict append paired_with_atom_dict $paired_with_atom [expr [dict get $bin_counts $key] /2 ]                  
-                }
-
-                dict set cur_atom_counts_dict $key $paired_with_atom_dict
-                
-                dict set cur_atom_count_1 $key 1
-                # if {[dict exists $total_counts $key]} then {
-                #   dict set total_counts $key [expr [dict get $total_counts $key] + [expr [dict get $bin_counts $key] / 2]]
-                # } else {
-                #   dict set total_counts $key [expr [dict get $bin_counts $key] /2]
-                # }
-            }
-        }
-        dict set all_atoms_counts $atom 0        
-        set sqy {}
-        set sqy_pos {}
-        set sqy_neg {}
-        set cur_atom_neighbours_contributions [dict create]        
-
-        # set cur_atom_contribution {} 
-
-        foreach bin_i [dict keys $cur_atom_counts_dict] {            
-            set cur_bin_neighbour_counts [dict get $cur_atom_counts_dict $bin_i]    
-            # set bin_total_for_atom [ladd [dict values $cur_bin_neighbour_counts]]
-
-            set contribution_for_cur_bin [lindex [lindex $possible_sq_contribution_differences $bin_i] 0]        
-            foreach neighbour [dict keys $cur_bin_neighbour_counts] {    
-                set neighbour_contribution_for_cur_bin {}              
-                foreach cur_unit_sofq $contribution_for_cur_bin {
-                    lappend neighbour_contribution_for_cur_bin [expr [dict get $cur_bin_neighbour_counts $neighbour] * $cur_unit_sofq]
-                }
-
-                if {[dict exists $cur_atom_neighbours_contributions $neighbour]} then {
-                    set neighbour_existing_contribution [dict get $cur_atom_neighbours_contributions $neighbour]
-                    for {set q 0} {$q < [llength $neighbour_existing_contribution]} {incr q} {
-                        lset neighbour_existing_contribution $q [expr [lindex $neighbour_existing_contribution $q] + [lindex $neighbour_contribution_for_cur_bin $q]]
-                    }
-                    dict set cur_atom_neighbours_contributions $neighbour $neighbour_existing_contribution
-                } else {
-                    dict set cur_atom_neighbours_contributions $neighbour $neighbour_contribution_for_cur_bin
-                }
-            }
-
-            # if {[llength $cur_atom_contribution]>0} then {
-            #     set ix 0
-            #     foreach var $contribution_for_cur_bin {
-            #         lset cur_atom_contribution $ix [expr [expr $var * $bin_total_for_atom] + [lindex $cur_atom_contribution $ix]]
-            #         incr ix
-            #     }
-            # } else {
-            #     foreach var $contribution_for_cur_bin {
-            #         lappend cur_atom_contribution [expr $var * $bin_total_for_atom]
-            #     }
-            # }
-        }
-        
-
-        if {$write_to_file == 1} then {
-            # puts "writing to file..."
-            set atom_contribution {}
-            set out_line $atom
-            append out_line " {"
-            foreach neighbour [dict keys $cur_atom_neighbours_contributions] {
-                set new_sofq [dict get $cur_atom_neighbours_contributions $neighbour]
-                if {[llength $atom_contribution]==0} then {                         
-                    set atom_contribution $new_sofq
-                } else {
-                    for {set q 0} {$q < [llength $atom_contribution]} {incr q} {
-                        lset atom_contribution $q [expr [lindex $atom_contribution $q] + [lindex $new_sofq $q]]
-                    }
-                } 
-                append out_line $neighbour
-                append out_line " {"
-                append out_line [join $new_sofq " "]  
-                append out_line "} "                      
-            }
-            append out_line "}"                   
-            puts $fp $out_line
-        }
-        dict set all_atom_contributions $atom [list $atom_contribution {} {}]
-
-        if {[expr $counter%1000]==0} {
-            puts "$counter out of $atoms_count atoms processed."
-        }
-        incr counter
-        # puts "Calculated: $atom_contribution"   
-        # puts "Expected: $cur_atom_contribution"     
-        # break
-    }
-    set all_atoms_counts [dict create]
-    
-    if {$write_to_file == 1} then {
-        close $fp
-    }
-
- #    set partial_gofr_result [get_partial_g_r $cur_atom_count_1 1]
- #    set y_partial_gofr [lindex $partial_gofr_result 1]
- #    set partial_sofq_result [get_partial_s_q_with_contributions $y_partial_gofr 1]
- #    set y_partial_sofq [lindex $partial_sofq_result 0]
-
- #    for {set i 0} {$i < [llength $y_partial_sofq]} {incr i} {     
- #      set curVal [lindex $y_partial_sofq $i]
- #      foreach item [dict keys $total_counts] {            
- #          set cur_count [dict get $total_counts $item]
- #          if {$cur_count>0} {
- #              incr cur_count -1
- #          }
- #          set cur_contribution [lindex [lindex $possible_sq_contribution_differences $item] 0]
- #          set curVal [expr $curVal + [expr [lindex $cur_contribution $i] * $cur_count]]
- #      }
-
- #      lappend sqy $curVal
- #    }
-
-    # set sqx {}    
-    # set y 0.5
-    # foreach val $sqy {
-    #   lappend sqx $y
-    #   set y [expr $y + 0.1]
-    # }
-    
-    # set tstplt [multiplot -x $sqx -y $sqy -title "Test FULL S(q)" -lines -linewidth 5 -linecolor yellow -marker point -legend "Old Method" -plot]
-
- #    set possible_sq_contribution_differences_new [dict create]
- #    foreach key [dict keys $cur_atom_count_1] {
- #        set cur_bin_count_2 $cur_atom_count_1
- #        dict set cur_bin_count_2 $key 2
-
- #        set new_gofr_result [get_partial_g_r $cur_bin_count_2 1]
- #        set y_new_gofr [lindex $new_gofr_result 1]
- #        set new_sofq_result [get_partial_s_q_with_contributions $y_new_gofr 1]
- #        set y_new_sofq [lindex $new_sofq_result 0]
-
- #        set newDiff {}
- #        for {set l 0} {$l < [llength $y_new_sofq]} {incr l} {
- #            lappend newDiff [expr [lindex $y_new_sofq $l] - [lindex $y_partial_sofq $l]]
- #        }
-        
- #        dict set possible_sq_contribution_differences_new $key $newDiff
- #    } 
-
- #    set sqy_new $y_partial_sofq
- #    foreach item [dict keys $total_counts] {           
- #        set cur_count [dict get $total_counts $item]
- #        if {$cur_count>0} {
- #            incr cur_count -1
- #        }
- #        set cur_contribution [dict get $possible_sq_contribution_differences_new $item]
- #        # puts "$item: $cur_contribution"
- #        set correctedVal {}
- #        for {set i 0} {$i < [llength $cur_contribution]} {incr i} {
- #            lappend correctedVal [expr [lindex $cur_contribution $i] * $cur_count]
- #        }
- #        # puts "$item : $cur_count : $correctedVal"
- #        if {[llength $sqy_new]>0} then {
- #            for {set i 0} {$i < [llength $sqy_new]} {incr i} {
- #                lset sqy_new $i [expr [lindex $sqy_new $i] + [lindex $correctedVal $i]]
- #            }
- #        } else {
- #            set sqy_new $correctedVal
- #        }
- #        # puts "$sqy_new"
-        
- #    }
-
- #    $tstplt add $sqx $sqy_new -lines -linewidth 2 -marker point -linecolor red -legend "New Method" -plot
-
-    foreach grp_pair [dict keys $allPairsAggregated_counts] {
-        set cur_grp_pair_counts_list [dict get $allPairsAggregated_counts $grp_pair]
-        set cur_grp_pair_counts_dict [dict create]
-        
-        # Aggregate the counts in each group by bin numbers
-        foreach item $cur_grp_pair_counts_list {
-            foreach key [dict keys $item] {
-                if {[dict exists $cur_grp_pair_counts_dict $key]} then {
-                    dict set cur_grp_pair_counts_dict $key [expr [dict get $cur_grp_pair_counts_dict $key] + [expr [dict get $item $key] ]]
-                } else {
-                    dict set cur_grp_pair_counts_dict $key [expr [dict get $item $key] ]
-                }
-            }
-        }   
-        
-        dict set allPairsAggregated_counts $grp_pair $cur_grp_pair_counts_dict
-
-        # calculate the sum of counts in each element group pair
-        set cur_grp_pair_counts_sum 0
-        foreach grp_bin [dict keys $cur_grp_pair_counts_dict] {
-            set cur_grp_pair_counts_sum [expr $cur_grp_pair_counts_sum + [dict get $cur_grp_pair_counts_dict $grp_bin]]
-        }
-
-        # Get the weight of the current element group pair
-        set pair_weight [expr double($cur_grp_pair_counts_sum) / $total_distances_count]
-        dict set allPairsAggregated_weights $grp_pair $pair_weight
-
-        set grps [split $grp_pair " "]      
-        if {[lindex $grps 0]==[lindex $grps 1]} {
-            lappend all_same_elements_weights $pair_weight
-
-            set cur_pair_formfactor [dict get $groupPair_formfactors $grp_pair]
-            set cur_pair_formfactor_list [split [lindex $cur_pair_formfactor 0] " "]
-            lappend all_same_group_pair_formfactors $cur_pair_formfactor_list
-        }       
-    }
-
-    set auto_call 0    
 }
 
 proc ::SQGUI::readElementsFile {} {
@@ -1742,6 +1015,534 @@ proc ::SQGUI::readElementsFile {} {
     return 0
 }
 
+proc ::SQGUI::computeAllPossiblePartials {} {
+
+    global groupPair_formfactors
+    global possible_sq_contributions
+    global possible_sq_contribution_differences
+
+    set possible_sq_contributions {}
+    set possible_sq_contribution_differences {}
+    set s_q_pos_contributions {}
+    set s_q_neg_contributions {}
+    set y_partial_gofr_sum {}
+    set x_partial_sofq {}
+    set y_partial_sofq_sum {}
+
+    variable delta
+    variable rmax
+    set numbins [expr $rmax / $delta]
+    set pair_weight 1 
+
+    for {set bin 0} {$bin < $numbins} {incr bin} {    
+
+        # Compute g(r) for current bin with count 1
+        set cur_grp_pair_counts_dict {}
+        dict append cur_grp_pair_counts_dict $bin 1
+        set partial_gofr_result_1 [get_partial_g_r $cur_grp_pair_counts_dict $pair_weight]
+        set y_partial_gofr_1 [lindex $partial_gofr_result_1 1]
+        # Compute g(r) for current bin with count 2
+        set cur_grp_pair_counts_dict {}
+        dict append cur_grp_pair_counts_dict $bin 2
+        set partial_gofr_result_2 [get_partial_g_r $cur_grp_pair_counts_dict $pair_weight]
+        set y_partial_gofr_2 [lindex $partial_gofr_result_2 1]
+
+        # puts "$y_partial_gofr"
+        
+        # Compute s(q) using g(r) for a bin with count 1
+        set partial_sofq_result_1 [get_partial_s_q_with_contributions $y_partial_gofr_1 $pair_weight]
+        set y_partial_sofq_1 [lindex $partial_sofq_result_1 0] 
+        set s_q_pos_contributions_1 [lindex $partial_sofq_result_1 1] 
+        set s_q_neg_contributions_1 [lindex $partial_sofq_result_1 2] 
+
+        # Compute s(q) using g(r) for a bin with count 2
+        set partial_sofq_result_2 [get_partial_s_q_with_contributions $y_partial_gofr_2 $pair_weight]
+        set y_partial_sofq_2 [lindex $partial_sofq_result_2 0] 
+        set s_q_pos_contributions_2 [lindex $partial_sofq_result_2 1] 
+        set s_q_neg_contributions_2 [lindex $partial_sofq_result_2 2]   
+
+        # Save the S(q), Positive and Negative contributions to S(q) when bin count is 1
+        lappend possible_sq_contributions [list $y_partial_sofq_1 $s_q_pos_contributions_1 $s_q_neg_contributions_1]
+
+        ## Save the differences in S(q), Positive and Negative contributions to S(q) when bin count is 2 and 1
+        for {set q_idx 0} {$q_idx < [llength $y_partial_sofq_2]} {incr q_idx} {
+            lset y_partial_sofq_2 $q_idx [expr [lindex $y_partial_sofq_2 $q_idx] - [lindex $y_partial_sofq_1 $q_idx]]
+            lset s_q_pos_contributions_2 $q_idx [expr [lindex $s_q_pos_contributions_2 $q_idx] - [lindex $s_q_pos_contributions_1 $q_idx]]
+            lset s_q_neg_contributions_2 $q_idx [expr [lindex $s_q_neg_contributions_2 $q_idx] - [lindex $s_q_neg_contributions_1 $q_idx]]
+        }
+        lappend possible_sq_contribution_differences [list $y_partial_sofq_2 $s_q_pos_contributions_2 $s_q_neg_contributions_2] 
+    }       
+
+    if {0} {
+
+        if { [llength $y_partial_sofq_sum] == 0 } then {
+            set y_partial_sofq_sum $y_partial_sofq
+        } else {
+            for {set i 0} {$i < [llength $y_partial_sofq_sum]} {incr i} {
+                lset y_partial_sofq_sum $i [expr [lindex $y_partial_sofq $i] + [lindex $y_partial_sofq_sum $i]]
+            }
+        }
+    }
+}
+
+proc ::SQGUI::ProcessAllsubGroupPairs {} {
+    global bin_totals
+    global subGroupPair_counts
+    global allPairsAggregated_counts
+    global allPairsAggregated_weights
+    global all_same_elements_weights
+    global all_same_group_pair_formfactors
+    global groupPair_formfactors 
+    global all_atoms_counts
+    global possible_sq_contributions
+    global all_atom_contributions
+    global possible_sq_contribution_differences
+    global selection_groups_weights_all_denominator
+
+    set allPairsAggregated_counts [dict create]
+    set allPairsAggregated_weights [dict create]
+    set all_same_elements_weights {}
+    set all_same_group_pair_formfactors {}
+    set all_atoms_counts [dict create]
+    set all_atom_contributions [dict create] 
+    set selection_groups_weights_all_denominator [dict create]
+    set unit_sofqs [dict create]
+    set write_to_file 0    
+    set fp {}   
+
+    variable total_distances_count
+    variable auto_call
+    variable input_file_path
+
+    set neighbour_contributions_file $input_file_path
+    set write_to_file 0
+    append neighbour_contributions_file "neighbour_contributions_sq.dat"
+    if {[catch {open $neighbour_contributions_file w} fp]} then {
+        set got_Error 1
+        tk_dialog .errmsg {viewSq Error} "There was an error opening the file '$neighbour_contributions_file'" error 0 Dismiss
+    } else {
+        set write_to_file 1     
+    }    
+    
+    for {set bin_i 0} {$bin_i < [llength $bin_totals]} {incr bin_i} {
+
+        set cur_bin_counts_dict [dict create]
+        set cur_grp_pair_counts_dict {}
+        set pair_weight [expr double([lindex $bin_totals $bin_i]) / $total_distances_count]
+
+        # Compute g(r) for current bin with count across all pairs              
+        dict append cur_bin_counts_dict $bin_i [lindex $bin_totals $bin_i]
+        set partial_gofr_result [get_partial_g_r $cur_bin_counts_dict $pair_weight]
+        set y_partial_gofr [lindex $partial_gofr_result 1]
+        
+        # Compute s(q) using above g(r)
+        set partial_sofq_result [get_partial_s_q_with_contributions $y_partial_gofr $pair_weight]
+        set y_partial_sofq [lindex $partial_sofq_result 0] 
+        set s_q_pos_contributions [lindex $partial_sofq_result 1] 
+        set s_q_neg_contributions [lindex $partial_sofq_result 2] 
+
+        # Get the magnitude of S(q) at each q and divide it by total count to get S(q) per unit
+        if {[lindex $bin_totals $bin_i]>0} then {
+            set sofq_per_unit {}
+            foreach sofq $y_partial_sofq {
+                lappend sofq_per_unit [expr $sofq / [lindex $bin_totals $bin_i]]
+            }
+            dict append unit_sofqs $bin_i $sofq_per_unit
+        }
+    }
+    
+    foreach subgrp_pair [dict keys $subGroupPair_counts] {
+
+        set subGroups [split $subgrp_pair " "]
+        set subGroup1_parts [split [lindex $subGroups 0] ":"]
+        set subGroup2_parts [split [lindex $subGroups 1] ":"]
+        set group1_name ""
+        set group2_name ""
+        set atom_i ""
+        set atom_j ""
+        if {[llength $subGroup1_parts]==2} then {
+            set group1_name "[lindex $subGroup1_parts 0]\]"         
+            set atom_i [lindex $subGroup1_parts 1] 
+        } else {            
+            set group1_name "[lindex $subGroup1_parts 0]:[lindex $subGroup1_parts 1]\]"
+            set atom_i [lindex $subGroup1_parts [expr [llength $subGroup1_parts]-1]]
+        }
+        if {[llength $subGroup2_parts]==2} then {
+            set group2_name "[lindex $subGroup2_parts 0]\]"
+            set atom_j [lindex $subGroup2_parts 1]
+        } else {
+            set group2_name "[lindex $subGroup2_parts 0]:[lindex $subGroup2_parts 1]\]"
+            set atom_j [lindex $subGroup2_parts [expr [llength $subGroup2_parts]-1]]
+        }
+
+        set atom_i [string range $atom_i 0 end-1]
+        set atom_j [string range $atom_j 0 end-1]
+
+        set grp_pair "$group1_name $group2_name"
+        set grp_pair_reverse "$group2_name $group1_name"
+        set counts [dict get $subGroupPair_counts $subgrp_pair]
+        
+        if { [dict exists $allPairsAggregated_counts $grp_pair] ==1 } then {
+            dict lappend allPairsAggregated_counts $grp_pair $counts    
+        } elseif { [dict exists $allPairsAggregated_counts $grp_pair_reverse] ==1 } then {  
+            dict lappend allPairsAggregated_counts $grp_pair_reverse $counts
+        } else {
+            dict lappend allPairsAggregated_counts $grp_pair $counts                
+        }
+
+        dict lappend all_atoms_counts $atom_i [list $atom_j $counts]
+        dict lappend all_atoms_counts $atom_j [list $atom_i $counts]    
+    }
+    
+    set cur_atom_count_1 [dict create]
+    set atoms_count [llength [dict keys $all_atoms_counts]]
+    set counter 1
+    foreach atom [dict keys $all_atoms_counts] {
+        set cur_atom_counts_list [dict get $all_atoms_counts $atom]
+        set cur_atom_counts_dict [dict create]
+        
+        # Aggregate the counts in each atom by bin numbers      
+        foreach item $cur_atom_counts_list {
+            set paired_with_atom [lindex $item 0]
+            set bin_counts [lindex $item 1]
+            foreach key [dict keys $bin_counts] {
+                set paired_with_atom_dict [dict create]
+                if {[dict exists $cur_atom_counts_dict $key]} then {
+                    set paired_with_atom_dict [dict get $cur_atom_counts_dict $key]
+                    
+                    if {[dict exists $paired_with_atom_dict $paired_with_atom]} then {                      
+                        dict set paired_with_atom_dict $paired_with_atom [expr [dict get $paired_with_atom_dict $paired_with_atom] + [expr [dict get $bin_counts $key] / 2]]
+                    } else {
+                        dict append paired_with_atom_dict $paired_with_atom [expr [dict get $bin_counts $key] / 2]
+                    }
+                } else {
+                    dict append paired_with_atom_dict $paired_with_atom [expr [dict get $bin_counts $key] /2 ]                  
+                }
+
+                dict set cur_atom_counts_dict $key $paired_with_atom_dict
+                
+                dict set cur_atom_count_1 $key 1
+            }
+        }
+        dict set all_atoms_counts $atom 0        
+        set sqy {}
+        set sqy_pos {}
+        set sqy_neg {}
+        set cur_atom_neighbours_contributions [dict create]        
+
+        foreach bin_i [dict keys $cur_atom_counts_dict] {            
+            set cur_bin_neighbour_counts [dict get $cur_atom_counts_dict $bin_i]
+
+            set contribution_for_cur_bin [lindex [lindex $possible_sq_contribution_differences $bin_i] 0]        
+            foreach neighbour [dict keys $cur_bin_neighbour_counts] {    
+                set neighbour_contribution_for_cur_bin {}              
+                foreach cur_unit_sofq $contribution_for_cur_bin {
+                    lappend neighbour_contribution_for_cur_bin [expr [dict get $cur_bin_neighbour_counts $neighbour] * $cur_unit_sofq]
+                }
+
+                if {[dict exists $cur_atom_neighbours_contributions $neighbour]} then {
+                    set neighbour_existing_contribution [dict get $cur_atom_neighbours_contributions $neighbour]
+                    for {set q 0} {$q < [llength $neighbour_existing_contribution]} {incr q} {
+                        lset neighbour_existing_contribution $q [expr [lindex $neighbour_existing_contribution $q] + [lindex $neighbour_contribution_for_cur_bin $q]]
+                    }
+                    dict set cur_atom_neighbours_contributions $neighbour $neighbour_existing_contribution
+                } else {
+                    dict set cur_atom_neighbours_contributions $neighbour $neighbour_contribution_for_cur_bin
+                }
+            }
+        }
+        
+
+        if {$write_to_file == 1} then {
+            # puts "writing to file..."
+            set atom_contribution {}
+            set out_line $atom
+            append out_line " {"
+            foreach neighbour [dict keys $cur_atom_neighbours_contributions] {
+                set new_sofq [dict get $cur_atom_neighbours_contributions $neighbour]
+                if {[llength $atom_contribution]==0} then {                         
+                    set atom_contribution $new_sofq
+                } else {
+                    for {set q 0} {$q < [llength $atom_contribution]} {incr q} {
+                        lset atom_contribution $q [expr [lindex $atom_contribution $q] + [lindex $new_sofq $q]]
+                    }
+                } 
+                append out_line $neighbour
+                append out_line " {"
+                append out_line [join $new_sofq " "]  
+                append out_line "} "                      
+            }
+            append out_line "}"                   
+            puts $fp $out_line
+        }
+        dict set all_atom_contributions $atom [list $atom_contribution {} {}]
+
+        if {[expr $counter%1000]==0} {
+            puts "$counter out of $atoms_count atoms processed."
+        }
+        incr counter
+    }
+    set all_atoms_counts [dict create]
+    
+    if {$write_to_file == 1} then {
+        close $fp
+    }
+
+    foreach grp_pair [dict keys $allPairsAggregated_counts] {
+        set cur_grp_pair_counts_list [dict get $allPairsAggregated_counts $grp_pair]
+        set cur_grp_pair_counts_dict [dict create]
+        
+        # Aggregate the counts in each group by bin numbers
+        foreach item $cur_grp_pair_counts_list {
+            foreach key [dict keys $item] {
+                if {[dict exists $cur_grp_pair_counts_dict $key]} then {
+                    dict set cur_grp_pair_counts_dict $key [expr [dict get $cur_grp_pair_counts_dict $key] + [expr [dict get $item $key] ]]
+                } else {
+                    dict set cur_grp_pair_counts_dict $key [expr [dict get $item $key] ]
+                }
+            }
+        }   
+        
+        dict set allPairsAggregated_counts $grp_pair $cur_grp_pair_counts_dict
+
+        # calculate the sum of counts in each element group pair
+        set cur_grp_pair_counts_sum 0
+        foreach grp_bin [dict keys $cur_grp_pair_counts_dict] {
+            set cur_grp_pair_counts_sum [expr $cur_grp_pair_counts_sum + [dict get $cur_grp_pair_counts_dict $grp_bin]]
+        }
+
+        # Get the weight of the current element group pair
+        set pair_weight [expr double($cur_grp_pair_counts_sum) / $total_distances_count]
+        dict set allPairsAggregated_weights $grp_pair $pair_weight
+
+        set grps [split $grp_pair " "]      
+        if {[lindex $grps 0]==[lindex $grps 1]} {
+            lappend all_same_elements_weights $pair_weight
+
+            set cur_pair_formfactor [dict get $groupPair_formfactors $grp_pair]
+            set cur_pair_formfactor_list [split [lindex $cur_pair_formfactor 0] " "]
+            lappend all_same_group_pair_formfactors $cur_pair_formfactor_list
+        }       
+    }
+
+    set selection_groups_weights_all_denominator $allPairsAggregated_weights
+    set auto_call 0    
+}
+
+proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
+
+    global groupPair_formfactors
+    global group_pair_s_q
+    global ff_weighted_group_pair_s_q
+    global selection_S_q_pos_contributions
+    global selection_S_q_neg_contributions  
+    global selection_weighted_S_q_pos_contributions
+    global selection_weighted_S_q_neg_contributions 
+    global rbin_contributions_for_total_S_q
+    global rbin_contributions_for_ff_weighted_S_q
+    global selection_groups_weights_all_denominator
+    global all_same_elements_weights
+    global all_same_group_pair_formfactors
+
+    variable input_file_path    
+    variable cannotplot
+    variable SQ_plot
+    variable auto_call
+    variable total_distances_count
+    variable selection1
+    variable selection2
+    variable subselection1
+    variable subselection2
+
+    set group_pair_g_r [dict create]
+    set weighted_group_pair_g_r [dict create]
+    set group_pair_s_q [dict create]
+    set ff_weighted_group_pair_s_q [dict create]
+    set rbin_contributions_for_total_S_q {}
+    set rbin_contributions_for_ff_weighted_S_q {}
+    set selection_S_q_pos_contributions [dict create]
+    set selection_S_q_neg_contributions [dict create]
+    set selection_weighted_S_q_pos_contributions [dict create]
+    set selection_weighted_S_q_neg_contributions [dict create]
+    set x_partial_gofr {}
+    set y_partial_gofr_sum {}
+    set x_partial_sofq {}
+    set y_partial_sofq_sum {}
+    set y_weighted_partial_sofq_sum {}
+
+    set unweighted_contributions_file $input_file_path
+    append unweighted_contributions_file "r_contributions_sq.dat"
+    set weighted_contributions_file $input_file_path
+    append weighted_contributions_file "r_contributions_form_factor_sq.dat"
+
+    #delete contributions files if they exist!
+    file delete $unweighted_contributions_file
+    file delete $weighted_contributions_file
+    
+
+    set sel1_20 [string range $selection1 0 20]
+    set sel2_20 [string range $selection2 0 20]
+    set subsel1_20 [string range $subselection1 0 20]
+    set subsel2_20 [string range $subselection2 0 20]
+    set counter 1
+    set grp_pairs_count [llength [dict keys $counts_dict]]
+    
+    foreach grp_pair [dict keys $counts_dict] {      
+        # Compute g(r) for current element group pair
+        set cur_grp_pair_counts_dict [dict get $counts_dict $grp_pair]
+        set pair_weight [dict get $weights_dict $grp_pair]
+        set partial_gofr_result [get_partial_g_r $cur_grp_pair_counts_dict $pair_weight]
+
+        set x_partial_gofr [lindex $partial_gofr_result 0]
+        set y_partial_gofr [lindex $partial_gofr_result 1]
+        
+        # weight the element group's partial g(r) using the element group pair's weight     
+        dict append group_pair_g_r $grp_pair $y_partial_gofr
+        set weighted_y_partial_gofr {}
+        for {set k 0} {$k < [llength $y_partial_gofr]} {incr k} {
+            lappend weighted_y_partial_gofr [expr [lindex $y_partial_gofr $k] * $pair_weight]
+        }
+        if { [llength $y_partial_gofr_sum] == 0 } then {
+            set y_partial_gofr_sum $weighted_y_partial_gofr
+        } else {
+            for {set i 0} {$i < [llength $y_partial_gofr_sum]} {incr i} {
+                lset y_partial_gofr_sum $i [expr [lindex $weighted_y_partial_gofr $i] + [lindex $y_partial_gofr_sum $i]]
+            }
+        }
+        dict append weighted_group_pair_g_r $grp_pair $weighted_y_partial_gofr
+
+        # Compute s(q) for current element group pair
+        set partial_sofq_result [get_partial_s_q $y_partial_gofr $unweighted_contributions_file $grp_pair $pair_weight]
+        set x_partial_sofq [lindex $partial_sofq_result 0]
+        set y_partial_sofq [lindex $partial_sofq_result 1] 
+        set rbin_contributions [lindex $partial_sofq_result 2]
+
+        dict append group_pair_s_q $grp_pair $y_partial_sofq
+
+        if { [llength $y_partial_sofq_sum] == 0 } then {
+            set y_partial_sofq_sum $y_partial_sofq
+        } else {
+            for {set i 0} {$i < [llength $y_partial_sofq_sum]} {incr i} {
+                lset y_partial_sofq_sum $i [expr [lindex $y_partial_sofq $i] + [lindex $y_partial_sofq_sum $i]]
+            }
+        }
+
+        if {[llength $rbin_contributions_for_total_S_q]==0} then {
+            set rbin_contributions_for_total_S_q $rbin_contributions
+        } else {
+            for {set i_contribution 0} {$i_contribution < [llength $rbin_contributions_for_total_S_q]} {incr i_contribution} {          
+                set rbins_for_q_so_far [lindex $rbin_contributions_for_total_S_q $i_contribution]
+                set rbins_for_q_new [lindex $rbin_contributions $i_contribution]
+                for {set q 0} {$q < [llength $rbins_for_q_new]} {incr q} {
+                    lset rbins_for_q_so_far $q [expr [lindex $rbins_for_q_so_far $q] + [lindex $rbins_for_q_new $q]]
+                }
+
+                lset rbin_contributions_for_total_S_q $i_contribution $rbins_for_q_so_far
+            }
+        }
+        
+        # Get the current group pair's formfactor values list
+        set cur_pair_formfactor [dict get $groupPair_formfactors $grp_pair]
+        set cur_pair_formfactor_list [split [lindex $cur_pair_formfactor 0] " "]       
+
+        # Calculate partuial g(r) using all-case weights for form-factor weighted S(q)
+        set pair_weight_all_denominator [dict get $selection_groups_weights_all_denominator $grp_pair]
+        set partial_gofr_result_all [get_partial_g_r $cur_grp_pair_counts_dict $pair_weight_all_denominator]            
+        set y_partial_gofr_all [lindex $partial_gofr_result_all 1]
+
+        # Compute form factor weighted s(q) for current group pair
+        set weighted_partial_sofq_result [get_formfactor_weighted_partial_s_q $y_partial_gofr_all $pair_weight_all_denominator $cur_pair_formfactor_list "" $grp_pair]
+
+        set x_weighted_partial_sofq [lindex $weighted_partial_sofq_result 0]
+        set y_weighted_partial_sofq [lindex $weighted_partial_sofq_result 1]
+        set ff_weighted_rbin_contributions [lindex $weighted_partial_sofq_result 2]
+
+        dict append ff_weighted_group_pair_s_q $grp_pair $y_weighted_partial_sofq
+
+        if { [llength $y_weighted_partial_sofq_sum] == 0 } then {
+            set y_weighted_partial_sofq_sum $y_weighted_partial_sofq
+        } else {
+            for {set i 0} {$i < [llength $y_weighted_partial_sofq_sum]} {incr i} {
+                lset y_weighted_partial_sofq_sum $i [expr [lindex $y_weighted_partial_sofq $i] + [lindex $y_weighted_partial_sofq_sum $i]]
+            }
+        }
+
+        if {[llength $rbin_contributions_for_ff_weighted_S_q]==0} then {
+            set rbin_contributions_for_ff_weighted_S_q $ff_weighted_rbin_contributions
+        } else {
+            for {set i_contribution 0} {$i_contribution < [llength $rbin_contributions_for_ff_weighted_S_q]} {incr i_contribution} {            
+                set rbins_for_q_so_far [lindex $rbin_contributions_for_ff_weighted_S_q $i_contribution]
+                set rbins_for_q_new [lindex $ff_weighted_rbin_contributions $i_contribution]
+                for {set q 0} {$q < [llength $rbins_for_q_new]} {incr q} {
+                    lset rbins_for_q_so_far $q [expr [lindex $rbins_for_q_so_far $q] + [lindex $rbins_for_q_new $q]]
+                }
+
+                lset rbin_contributions_for_ff_weighted_S_q $i_contribution $rbins_for_q_so_far
+            }
+        }
+       
+    }
+
+    if {$cannotplot} then {
+        tk_dialog .errmsg {viewSq Error} "Multiplot is not available." error 0 Dismiss
+    } else { 
+        set addToTitle ""
+        if {$auto_call} then {
+            set addToTitle "for the selection "
+            # plot total g(r) for the selections
+            set selection_total_gofr_plot [multiplot -x $x_partial_gofr -y $y_partial_gofr_sum -title "Selections - g(r) plot (Total Distances: $total_distances_count, $sel1_20-$sel2_20)" -lines -linewidth 2 -marker point -plot]
+
+            # plot total s(q) for the selections
+            set selection_total_sofq_plot [multiplot -x $x_partial_sofq -y $y_partial_sofq_sum -title "Selections - S(q) and form factor weighted S(q) plot ($sel1_20-$sel2_20)" \
+                                                    -legend "S(q)" -lines -linewidth 3 -marker point -plot]
+
+            # plot form factor weighted s(q) for the selections on the same plot as total s(q) for the selections
+            $selection_total_sofq_plot add $x_partial_sofq $y_weighted_partial_sofq_sum -lines -linewidth 2 -linecolor blue -legend "Form factor weighted S(q) ($sel1_20-$sel2_20)" -marker point -plot
+            
+            # plot positive and negative contributions to s(q) at each q separately
+            set selection_S_q_pos_contributions_y [dict values $selection_S_q_pos_contributions]
+            set selection_S_q_neg_contributions_y [dict values $selection_S_q_neg_contributions]        
+            set SQ_plot_pos_neg_contributions [multiplot -x [dict keys $selection_S_q_pos_contributions] -y $selection_S_q_pos_contributions_y -title "positive and negative contributions for S(q) for the selection plot ($sel1_20-$sel2_20)" \
+                                                    -lines -linewidth 2 -marker point -linecolor green -legend "Positive Contribution" -fillcolor black]
+            $SQ_plot_pos_neg_contributions add [dict keys $selection_S_q_pos_contributions] $selection_S_q_neg_contributions_y -lines -linewidth 2 \
+                                                    -legend "Negative Contribution" -marker point -linecolor red -fillcolor black -plot
+
+            # plot sum of positive and magnitude of negative contributions to s(q) at each q
+            set S_q_pos_abs_neg_contributions $selection_S_q_pos_contributions_y
+            set k_idx 0
+            foreach neg_value $selection_S_q_neg_contributions_y {
+                lset S_q_pos_abs_neg_contributions $k_idx [expr abs($neg_value) + [lindex $S_q_pos_abs_neg_contributions $k_idx] ]
+                incr k_idx
+            }
+            set SQ_plot_pos_abs_neg_contributions [multiplot -x [dict keys $selection_S_q_pos_contributions] -y $S_q_pos_abs_neg_contributions \
+                                                    -title "Sum of positive and magnitude of negative contributions for S(q) for the selection plot ($sel1_20-$sel2_20)" -lines -linewidth 2 -marker point -plot ]                  
+        } else {
+           $SQ_plot add $x_partial_sofq $y_weighted_partial_sofq_sum -lines -linewidth 2 -linecolor blue -marker point -legend "Form Factor Weighted S(q)" -plot
+        }
+
+        # plot positive and negative contributions to forma factor weighted s(q) at each q separately
+        set selection_weighted_S_q_pos_contributions_y [dict values $selection_weighted_S_q_pos_contributions]
+        set selection__weighted_S_q_neg_contributions_y [dict values $selection_weighted_S_q_neg_contributions]     
+        set ff_weighted_SQ_plot_pos_neg_contributions [multiplot -x [dict keys $selection_weighted_S_q_pos_contributions] -y $selection_weighted_S_q_pos_contributions_y \
+            -title "positive and negative contributions for form factor weighted S(q) ${addToTitle} plot ($sel1_20-$sel2_20)" \
+            -legend "Positive Contribution" -lines -linewidth 2 -marker point -linecolor green -fillcolor black]
+        $ff_weighted_SQ_plot_pos_neg_contributions add [dict keys $selection_weighted_S_q_pos_contributions] $selection__weighted_S_q_neg_contributions_y \
+            -legend "Negative Contribution" -lines -linewidth 2 -marker point -linecolor red -fillcolor black -plot
+
+        # plot sum of positive and magnitude of negative contributions to forma factor weighted s(q) at each q
+        set ff_weighted_S_q_pos_abs_neg_contributions $selection_weighted_S_q_pos_contributions_y
+        set k_idx 0
+        foreach neg_value $selection__weighted_S_q_neg_contributions_y {
+            lset ff_weighted_S_q_pos_abs_neg_contributions $k_idx [expr abs($neg_value) + [lindex $ff_weighted_S_q_pos_abs_neg_contributions $k_idx] ]
+            incr k_idx
+        }
+        set ff_weighted_SQ_plot_pos_abs_neg_contributions [multiplot -x [dict keys $selection_weighted_S_q_pos_contributions] -y $ff_weighted_S_q_pos_abs_neg_contributions \
+            -title "Sum of positive and magnitude of negative contributions for form factor weighted S(q) ${addToTitle} plot ($sel1_20-$sel2_20)" \
+            -lines -linewidth 2 -marker point -plot ]
+        
+    }           
+}
+
 proc ::SQGUI::printatomCounts {atoms_sel1 atoms_sel2 atoms_subSel1 atoms_subSel2} {
     puts "Number of atoms in selection1: $atoms_sel1   Number of atoms in selection2: $atoms_sel2"
     puts "Number of atoms in subselection1: $atoms_subSel1   Number of atoms in subselection2: $atoms_subSel2"    
@@ -1790,7 +1591,6 @@ proc ::SQGUI::computeSelections {} {
     variable input_file_path
     variable enableStatistics
     variable enableRankings
-    variable display_FormFactorWeighted_Results
 
     set atoms_sel1 0
     set atoms_sel2 0
@@ -1802,8 +1602,7 @@ proc ::SQGUI::computeSelections {} {
     set selection_groups_weights [dict create]
     set selection_groups_same_elements_weights {}
     set same_group_pair_formfactors {} 
-    set selection_atom_contributions [dict create];  
-    set display_FormFactorWeighted_Results 1
+    set selection_atom_contributions [dict create];
     set selection_groups_weights_all_denominator [dict create]
 
     set auto_call 1
@@ -1990,7 +1789,7 @@ proc ::SQGUI::computeSelections {} {
         set selection_groups_weights_all_denominator $allPairsAggregated_weights
         printatomCounts $atoms_sel1 $atoms_sel2 $atoms_subSel1 $atoms_subSel2
         printdistanceCounts $selectionDistances $subSelectionDistances $all_distances_count        
-        computePartialsForSelections $allPairsAggregated_counts $allPairsAggregated_weights $all_same_elements_weights $all_same_group_pair_formfactors 1 0
+        computePartialsForSelections $allPairsAggregated_counts $allPairsAggregated_weights
         puts "Completed!\n"
     } else {
         set selection_done 0
@@ -2314,7 +2113,7 @@ proc ::SQGUI::computeSelections {} {
             }   
         }
         
-        computePartialsForSelections $selection_groups_counts $selection_groups_weights $selection_groups_same_elements_weights $same_group_pair_formfactors 1 0
+        computePartialsForSelections $selection_groups_counts $selection_groups_weights
         puts "Completed!"
     }
 
@@ -2334,314 +2133,16 @@ proc ::SQGUI::computeSelections {} {
     update idletasks
 }
 
-proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict homogenousPairs_weights homogenousPairs_formfactors displayPlots is_base_case} {
-
-    global groupPair_formfactors
-    global group_pair_s_q
-    global ff_weighted_group_pair_s_q
-    global ff_weighted_group_pair_s_q_full_denom
-    global selection_S_q_pos_contributions
-    global selection_S_q_neg_contributions  
-    global selection_weighted_S_q_pos_contributions
-    global selection_weighted_S_q_neg_contributions 
-    global selection_weighted_S_q_pos_contributions_full_denom
-    global selection_weighted_S_q_neg_contributions_full_denom
-    global rbin_contributions_for_total_S_q
-    global rbin_contributions_for_ff_weighted_S_q
-    global rbin_contributions_for_ff_weighted_S_q_full_denom
-    global selection_groups_weights_all_denominator
-    global all_same_elements_weights
-    global all_same_group_pair_formfactors
-
-    variable input_file_path    
-    variable cannotplot
-    variable SQ_plot
-    variable auto_call
-    variable total_distances_count
-    variable display_FormFactorWeighted_Results
-    variable selection1
-    variable selection2
-    variable subselection1
-    variable subselection2
-
-    set group_pair_g_r [dict create]
-    set weighted_group_pair_g_r [dict create]
-    set group_pair_s_q [dict create]
-    set ff_weighted_group_pair_s_q [dict create]
-    set ff_weighted_group_pair_s_q_full_denom [dict create]
-    set rbin_contributions_for_total_S_q {}
-    set rbin_contributions_for_ff_weighted_S_q {}
-    set rbin_contributions_for_ff_weighted_S_q_full_denom {}
-    set selection_S_q_pos_contributions [dict create]
-    set selection_S_q_neg_contributions [dict create]
-    set selection_weighted_S_q_pos_contributions [dict create]
-    set selection_weighted_S_q_neg_contributions [dict create]
-    set selection_weighted_S_q_pos_contributions_full_denom [dict create]
-    set selection_weighted_S_q_neg_contributions_full_denom [dict create]
-    set x_partial_gofr {}
-    set y_partial_gofr_sum {}
-    set x_partial_sofq {}
-    set y_partial_sofq_sum {}
-    set y_weighted_partial_sofq_sum {}
-    set y_weighted_partial_sofq_sum_full_denom {}
-
-    set unweighted_contributions_file $input_file_path
-    append unweighted_contributions_file "r_contributions_sq.dat"
-    set weighted_contributions_file $input_file_path
-    append weighted_contributions_file "r_contributions_form_factor_sq.dat"
-
-    #delete contributions files if they exist!
-    file delete $unweighted_contributions_file
-    file delete $weighted_contributions_file
-    
-
-    set sel1_20 [string range $selection1 0 20]
-    set sel2_20 [string range $selection2 0 20]
-    set subsel1_20 [string range $subselection1 0 20]
-    set subsel2_20 [string range $subselection2 0 20]
-    set counter 1
-    set grp_pairs_count [llength [dict keys $counts_dict]]
-    
-    foreach grp_pair [dict keys $counts_dict] {        
-        # Compute g(r) for current element group pair
-        set cur_grp_pair_counts_dict [dict get $counts_dict $grp_pair]
-        set pair_weight [dict get $weights_dict $grp_pair]
-        # puts "$grp_pair : $pair_weight"
-        set partial_gofr_result [get_partial_g_r $cur_grp_pair_counts_dict $pair_weight]
-
-        set x_partial_gofr [lindex $partial_gofr_result 0]
-        set y_partial_gofr [lindex $partial_gofr_result 1]
-        
-        # weight the element group's partial g(r) using the element group pair's weight     
-        dict append group_pair_g_r $grp_pair $y_partial_gofr
-        set weighted_y_partial_gofr {}
-        for {set k 0} {$k < [llength $y_partial_gofr]} {incr k} {
-            lappend weighted_y_partial_gofr [expr [lindex $y_partial_gofr $k] * $pair_weight]
-        }
-        if { [llength $y_partial_gofr_sum] == 0 } then {
-            set y_partial_gofr_sum $weighted_y_partial_gofr
-        } else {
-            for {set i 0} {$i < [llength $y_partial_gofr_sum]} {incr i} {
-                lset y_partial_gofr_sum $i [expr [lindex $weighted_y_partial_gofr $i] + [lindex $y_partial_gofr_sum $i]]
-            }
-        }
-        dict append weighted_group_pair_g_r $grp_pair $weighted_y_partial_gofr
-
-        # Compute s(q) for current element group pair
-        set partial_sofq_result [get_partial_s_q $y_partial_gofr $unweighted_contributions_file $grp_pair $pair_weight]
-        set x_partial_sofq [lindex $partial_sofq_result 0]
-        set y_partial_sofq [lindex $partial_sofq_result 1] 
-        set rbin_contributions [lindex $partial_sofq_result 2]
-
-        dict append group_pair_s_q $grp_pair $y_partial_sofq
-
-        if { [llength $y_partial_sofq_sum] == 0 } then {
-            set y_partial_sofq_sum $y_partial_sofq
-        } else {
-            for {set i 0} {$i < [llength $y_partial_sofq_sum]} {incr i} {
-                lset y_partial_sofq_sum $i [expr [lindex $y_partial_sofq $i] + [lindex $y_partial_sofq_sum $i]]
-            }
-        }
-
-        if {[llength $rbin_contributions_for_total_S_q]==0} then {
-            set rbin_contributions_for_total_S_q $rbin_contributions
-        } else {
-            for {set i_contribution 0} {$i_contribution < [llength $rbin_contributions_for_total_S_q]} {incr i_contribution} {          
-                set rbins_for_q_so_far [lindex $rbin_contributions_for_total_S_q $i_contribution]
-                set rbins_for_q_new [lindex $rbin_contributions $i_contribution]
-                for {set q 0} {$q < [llength $rbins_for_q_new]} {incr q} {
-                    lset rbins_for_q_so_far $q [expr [lindex $rbins_for_q_so_far $q] + [lindex $rbins_for_q_new $q]]
-                }
-
-                lset rbin_contributions_for_total_S_q $i_contribution $rbins_for_q_so_far
-            }
-        }
-        
-        # Get the current group pair's formfactor values list
-        set cur_pair_formfactor [dict get $groupPair_formfactors $grp_pair]
-        set cur_pair_formfactor_list [split [lindex $cur_pair_formfactor 0] " "]
-
-        if {!$is_base_case} {
-            set pair_weight_all_dnominator [dict get $selection_groups_weights_all_denominator $grp_pair]
-            set partial_gofr_result_all [get_partial_g_r $cur_grp_pair_counts_dict $pair_weight_all_dnominator]            
-            set y_partial_gofr_all [lindex $partial_gofr_result_all 1]
-
-            # Compute form factor weighted s(q) for current group pair using all-all case denominator                        
-            set weighted_partial_sofq_result_full_denominator [get_formfactor_weighted_partial_s_q $y_partial_gofr_all $pair_weight_all_dnominator $cur_pair_formfactor_list \
-                    $all_same_elements_weights $all_same_group_pair_formfactors "" $grp_pair 1]
-
-            set x_weighted_partial_sofq_full_denom [lindex $weighted_partial_sofq_result_full_denominator 0]
-            set y_weighted_partial_sofq_full_denom [lindex $weighted_partial_sofq_result_full_denominator 1]
-            set ff_weighted_rbin_contributions_full_denom [lindex $weighted_partial_sofq_result_full_denominator 2]
-            
-            dict append ff_weighted_group_pair_s_q_full_denom $grp_pair $y_weighted_partial_sofq_full_denom
-
-            if { [llength $y_weighted_partial_sofq_sum_full_denom] == 0 } then {
-                set y_weighted_partial_sofq_sum_full_denom $y_weighted_partial_sofq_full_denom
-            } else {
-                for {set i 0} {$i < [llength $y_weighted_partial_sofq_sum_full_denom]} {incr i} {
-                    lset y_weighted_partial_sofq_sum_full_denom $i [expr [lindex $y_weighted_partial_sofq_full_denom $i] + [lindex $y_weighted_partial_sofq_sum_full_denom $i]]
-                }
-            }
-
-            if {[llength $rbin_contributions_for_ff_weighted_S_q_full_denom]==0} then {
-                set rbin_contributions_for_ff_weighted_S_q_full_denom $ff_weighted_rbin_contributions_full_denom
-            } else {
-                for {set i_contribution 0} {$i_contribution < [llength $rbin_contributions_for_ff_weighted_S_q_full_denom]} {incr i_contribution} {            
-                    set rbins_for_q_so_far [lindex $rbin_contributions_for_ff_weighted_S_q_full_denom $i_contribution]
-                    set rbins_for_q_new [lindex $ff_weighted_rbin_contributions_full_denom $i_contribution]
-                    for {set q 0} {$q < [llength $rbins_for_q_new]} {incr q} {
-                        lset rbins_for_q_so_far $q [expr [lindex $rbins_for_q_so_far $q] + [lindex $rbins_for_q_new $q]]
-                    }
-
-                    lset rbin_contributions_for_ff_weighted_S_q_full_denom $i_contribution $rbins_for_q_so_far
-                }
-            }
-        }        
-
-        # Compute form factor weighted s(q) for current group pair
-        set weighted_partial_sofq_result [get_formfactor_weighted_partial_s_q $y_partial_gofr $pair_weight $cur_pair_formfactor_list \
-                $homogenousPairs_weights $homogenousPairs_formfactors $weighted_contributions_file $grp_pair 0]
-
-        if {$display_FormFactorWeighted_Results != 0} then {
-
-            set x_weighted_partial_sofq [lindex $weighted_partial_sofq_result 0]
-            set y_weighted_partial_sofq [lindex $weighted_partial_sofq_result 1]
-            set ff_weighted_rbin_contributions [lindex $weighted_partial_sofq_result 2]
-
-            dict append ff_weighted_group_pair_s_q $grp_pair $y_weighted_partial_sofq
-
-            if { [llength $y_weighted_partial_sofq_sum] == 0 } then {
-                set y_weighted_partial_sofq_sum $y_weighted_partial_sofq
-            } else {
-                for {set i 0} {$i < [llength $y_weighted_partial_sofq_sum]} {incr i} {
-                    lset y_weighted_partial_sofq_sum $i [expr [lindex $y_weighted_partial_sofq $i] + [lindex $y_weighted_partial_sofq_sum $i]]
-                }
-            }
-
-            if {[llength $rbin_contributions_for_ff_weighted_S_q]==0} then {
-                set rbin_contributions_for_ff_weighted_S_q $ff_weighted_rbin_contributions
-            } else {
-                for {set i_contribution 0} {$i_contribution < [llength $rbin_contributions_for_ff_weighted_S_q]} {incr i_contribution} {            
-                    set rbins_for_q_so_far [lindex $rbin_contributions_for_ff_weighted_S_q $i_contribution]
-                    set rbins_for_q_new [lindex $ff_weighted_rbin_contributions $i_contribution]
-                    for {set q 0} {$q < [llength $rbins_for_q_new]} {incr q} {
-                        lset rbins_for_q_so_far $q [expr [lindex $rbins_for_q_so_far $q] + [lindex $rbins_for_q_new $q]]
-                    }
-
-                    lset rbin_contributions_for_ff_weighted_S_q $i_contribution $rbins_for_q_so_far
-                }
-            }
-        } else {
-            dict append ff_weighted_group_pair_s_q $grp_pair 0
-        }
-    }
-
-    if {$displayPlots} {
-
-        if {$cannotplot} then {
-            tk_dialog .errmsg {viewSq Error} "Multiplot is not available." error 0 Dismiss
-        } else { 
-            set addToTitle ""
-            if {$auto_call} then {
-                set addToTitle "for the selection "
-                # plot total g(r) for the selections
-                set selection_total_gofr_plot [multiplot -x $x_partial_gofr -y $y_partial_gofr_sum -title "Selections - g(r) plot (Total Distances: $total_distances_count, $sel1_20-$sel2_20)" -lines -linewidth 2 -marker point -plot]
-
-                # plot total s(q) for the selections
-                set selection_total_sofq_plot [multiplot -x $x_partial_sofq -y $y_partial_sofq_sum -title "Selections - S(q) and form factor weighted S(q) plot ($sel1_20-$sel2_20)" \
-                                                        -legend "S(q)" -lines -linewidth 3 -marker point -plot]
-                if {!$is_base_case} {
-                    $selection_total_sofq_plot add $x_partial_sofq $y_weighted_partial_sofq_sum_full_denom -lines -linewidth 2 -linecolor green -legend "Form factor weighted S(q) ($sel1_20-$sel2_20)- Full denominator" -marker point -plot
-                }
-
-                if {$display_FormFactorWeighted_Results != 0} then {
-                    # plot form factor weighted s(q) for the selections on the same plot as total s(q) for the selections
-                    $selection_total_sofq_plot add $x_partial_sofq $y_weighted_partial_sofq_sum -lines -linewidth 2 -linecolor blue -legend "Form factor weighted S(q) ($sel1_20-$sel2_20)" -marker point -plot
-                    # set testPlot [multiplot -x $x_partial_sofq -y $y_weighted_partial_sofq_sum -title "FF weighted partial S(q) plot" -lines -linewidth 2 -marker point -plot]
-                }
-
-                # plot positive and negative contributions to s(q) at each q separately
-                set selection_S_q_pos_contributions_y [dict values $selection_S_q_pos_contributions]
-                set selection_S_q_neg_contributions_y [dict values $selection_S_q_neg_contributions]        
-                set SQ_plot_pos_neg_contributions [multiplot -x [dict keys $selection_S_q_pos_contributions] -y $selection_S_q_pos_contributions_y -title "positive and negative contributions for S(q) for the selection plot ($sel1_20-$sel2_20)" \
-                                                        -lines -linewidth 2 -marker point -linecolor green -legend "Positive Contribution" -fillcolor black]
-                $SQ_plot_pos_neg_contributions add [dict keys $selection_S_q_pos_contributions] $selection_S_q_neg_contributions_y -lines -linewidth 2 \
-                                                        -legend "Negative Contribution" -marker point -linecolor red -fillcolor black -plot
-
-                # plot sum of positive and magnitude of negative contributions to s(q) at each q
-                set S_q_pos_abs_neg_contributions $selection_S_q_pos_contributions_y
-                set k_idx 0
-                foreach neg_value $selection_S_q_neg_contributions_y {
-                    lset S_q_pos_abs_neg_contributions $k_idx [expr abs($neg_value) + [lindex $S_q_pos_abs_neg_contributions $k_idx] ]
-                    incr k_idx
-                }
-                set SQ_plot_pos_abs_neg_contributions [multiplot -x [dict keys $selection_S_q_pos_contributions] -y $S_q_pos_abs_neg_contributions \
-                                                        -title "Sum of positive and magnitude of negative contributions for S(q) for the selection plot ($sel1_20-$sel2_20)" -lines -linewidth 2 -marker point -plot ]                  
-            } else {
-                if {$display_FormFactorWeighted_Results != 0} then {
-                    $SQ_plot add $x_partial_sofq $y_weighted_partial_sofq_sum -lines -linewidth 2 -linecolor blue -marker point -legend "Form Factor Weighted S(q)" -plot
-                }
-            }
-
-            if {!$is_base_case} {
-                # plot positive and negative contributions to forma factor weighted s(q) at each q separately
-                set selection_weighted_S_q_pos_contributions_y [dict values $selection_weighted_S_q_pos_contributions_full_denom]
-                set selection__weighted_S_q_neg_contributions_y [dict values $selection_weighted_S_q_neg_contributions_full_denom]     
-                set ff_weighted_SQ_plot_pos_neg_contributions_full_denom [multiplot -x [dict keys $selection_weighted_S_q_pos_contributions_full_denom] -y $selection_weighted_S_q_pos_contributions_y \
-                                                        -title "positive and negative contributions for form factor weighted S(q) ${addToTitle} plot- Full denominator ($sel1_20-$sel2_20)" \
-                                                        -legend "Positive Contribution" -lines -linewidth 2 -marker point -linecolor green -fillcolor black]
-                $ff_weighted_SQ_plot_pos_neg_contributions_full_denom add [dict keys $selection_weighted_S_q_pos_contributions_full_denom] $selection__weighted_S_q_neg_contributions_y \
-                                                        -legend "Negative Contribution" -lines -linewidth 2 -marker point -linecolor red -fillcolor black -plot
-
-                # plot sum of positive and magnitude of negative contributions to forma factor weighted s(q) at each q
-                set ff_weighted_S_q_pos_abs_neg_contributions $selection_weighted_S_q_pos_contributions_y
-                set k_idx 0
-                foreach neg_value $selection__weighted_S_q_neg_contributions_y {
-                    lset ff_weighted_S_q_pos_abs_neg_contributions $k_idx [expr abs($neg_value) + [lindex $ff_weighted_S_q_pos_abs_neg_contributions $k_idx] ]
-                    incr k_idx
-                }
-                set ff_weighted_SQ_plot_pos_abs_neg_contributions_full_denom [multiplot -x [dict keys $selection_weighted_S_q_pos_contributions] -y $ff_weighted_S_q_pos_abs_neg_contributions \
-                                                        -title "Sum of positive and magnitude of negative contributions for form factor weighted S(q) ${addToTitle} plot- Full denominator ($sel1_20-$sel2_20)" -lines -linewidth 2 -marker point -plot ]
-            }
-            if {$display_FormFactorWeighted_Results != 0} then {
-                # plot positive and negative contributions to forma factor weighted s(q) at each q separately
-                set selection_weighted_S_q_pos_contributions_y [dict values $selection_weighted_S_q_pos_contributions]
-                set selection__weighted_S_q_neg_contributions_y [dict values $selection_weighted_S_q_neg_contributions]     
-                set ff_weighted_SQ_plot_pos_neg_contributions [multiplot -x [dict keys $selection_weighted_S_q_pos_contributions] -y $selection_weighted_S_q_pos_contributions_y \
-                                                        -title "positive and negative contributions for form factor weighted S(q) ${addToTitle} plot ($sel1_20-$sel2_20)" \
-                                                        -legend "Positive Contribution" -lines -linewidth 2 -marker point -linecolor green -fillcolor black]
-                $ff_weighted_SQ_plot_pos_neg_contributions add [dict keys $selection_weighted_S_q_pos_contributions] $selection__weighted_S_q_neg_contributions_y \
-                                                        -legend "Negative Contribution" -lines -linewidth 2 -marker point -linecolor red -fillcolor black -plot
-
-                # plot sum of positive and magnitude of negative contributions to forma factor weighted s(q) at each q
-                set ff_weighted_S_q_pos_abs_neg_contributions $selection_weighted_S_q_pos_contributions_y
-                set k_idx 0
-                foreach neg_value $selection__weighted_S_q_neg_contributions_y {
-                    lset ff_weighted_S_q_pos_abs_neg_contributions $k_idx [expr abs($neg_value) + [lindex $ff_weighted_S_q_pos_abs_neg_contributions $k_idx] ]
-                    incr k_idx
-                }
-                set ff_weighted_SQ_plot_pos_abs_neg_contributions [multiplot -x [dict keys $selection_weighted_S_q_pos_contributions] -y $ff_weighted_S_q_pos_abs_neg_contributions \
-                                                        -title "Sum of positive and magnitude of negative contributions for form factor weighted S(q) ${addToTitle} plot ($sel1_20-$sel2_20)" -lines -linewidth 2 -marker point -plot ]
-            }
-        }           
-    }
-}
-
 proc ::SQGUI::DisplayStatsForSelections {} {
 
     global group_pair_s_q
     global ff_weighted_group_pair_s_q
-    global ff_weighted_group_pair_s_q_full_denom
     global rbin_contributions_for_total_S_q
     global rbin_contributions_for_ff_weighted_S_q
-    global rbin_contributions_for_ff_weighted_S_q_full_denom
     global selection_S_q_pos_contributions
     global selection_S_q_neg_contributions  
     global selection_weighted_S_q_pos_contributions
-    global selection_weighted_S_q_neg_contributions 
-    global selection_weighted_S_q_pos_contributions_full_denom
-    global selection_weighted_S_q_neg_contributions_full_denom
+    global selection_weighted_S_q_neg_contributions
     global selection_atoms_counts
     global topN_Sorted
     global selection_atom_contributions
@@ -2705,11 +2206,8 @@ proc ::SQGUI::DisplayStatsForSelections {} {
             foreach key [dict keys $group_pair_s_q] {
                 set s_q_values [dict get $group_pair_s_q $key]              
                 set s_q_val_selected_range [expr $s_q_val_selected_range + [lindex $s_q_values $q_idx]]  
-
-                # if {$display_FormFactorWeighted_Results != 0} then {
-                    set ff_s_q_values [dict get $ff_weighted_group_pair_s_q_full_denom $key]                
-                    set ff_s_q_val_selected_range [expr $ff_s_q_val_selected_range + [lindex $ff_s_q_values $q_idx]]   
-                # }             
+                set ff_s_q_values [dict get $ff_weighted_group_pair_s_q $key]                
+                set ff_s_q_val_selected_range [expr $ff_s_q_val_selected_range + [lindex $ff_s_q_values $q_idx]]            
             }
 
             if {[llength $s_q_rbin_contributions_selected_range]==0} then {
@@ -2723,28 +2221,23 @@ proc ::SQGUI::DisplayStatsForSelections {} {
 
             set s_q_pos_values [dict get $selection_S_q_pos_contributions $cur_q]
             set s_q_neg_values [dict get $selection_S_q_neg_contributions $cur_q]
-
             set s_q_pos_val_selected_range [expr $s_q_pos_val_selected_range + $s_q_pos_values]
             set s_q_neg_val_selected_range [expr $s_q_neg_val_selected_range + $s_q_neg_values]
-            # set s_q_pos_neg_val_selected_range [expr $s_q_pos_neg_val_selected_range + $s_q_pos_val_selected_range + abs($s_q_neg_val_selected_range)]
-
-            # if {$display_FormFactorWeighted_Results != 0} then {
-                if {[llength $ff_s_q_rbin_contributions_selected_range]==0} then {
-                    set ff_s_q_rbin_contributions_selected_range [lindex $rbin_contributions_for_ff_weighted_S_q_full_denom $q_idx]
-                } else {
-                    set rbins_for_q_new [lindex $rbin_contributions_for_ff_weighted_S_q_full_denom $q_idx]
-                    for {set q 0} {$q < [llength $ff_s_q_rbin_contributions_selected_range]} {incr q} {
-                        lset ff_s_q_rbin_contributions_selected_range $q [expr [lindex $ff_s_q_rbin_contributions_selected_range $q] + [lindex $rbins_for_q_new $q]]
-                    }
+           
+            if {[llength $ff_s_q_rbin_contributions_selected_range]==0} then {
+                set ff_s_q_rbin_contributions_selected_range [lindex $rbin_contributions_for_ff_weighted_S_q $q_idx]
+            } else {
+                set rbins_for_q_new [lindex $rbin_contributions_for_ff_weighted_S_q $q_idx]
+                for {set q 0} {$q < [llength $ff_s_q_rbin_contributions_selected_range]} {incr q} {
+                    lset ff_s_q_rbin_contributions_selected_range $q [expr [lindex $ff_s_q_rbin_contributions_selected_range $q] + [lindex $rbins_for_q_new $q]]
                 }
-                
-                set ff_s_q_pos_values [dict get $selection_weighted_S_q_pos_contributions_full_denom $cur_q]
-                set ff_s_q_neg_values [dict get $selection_weighted_S_q_neg_contributions_full_denom $cur_q]
+            }
+            
+            set ff_s_q_pos_values [dict get $selection_weighted_S_q_pos_contributions $cur_q]
+            set ff_s_q_neg_values [dict get $selection_weighted_S_q_neg_contributions $cur_q]
 
-                set ff_s_q_pos_val_selected_range [expr $ff_s_q_pos_val_selected_range + $ff_s_q_pos_values]
-                set ff_s_q_neg_val_selected_range [expr $ff_s_q_neg_val_selected_range + $ff_s_q_neg_values]
-                #set ff_s_q_pos_neg_val_selected_range [expr $ff_s_q_pos_neg_val_selected_range + $ff_s_q_pos_val_selected_range + abs($ff_s_q_neg_val_selected_range)]
-            # }
+            set ff_s_q_pos_val_selected_range [expr $ff_s_q_pos_val_selected_range + $ff_s_q_pos_values]
+            set ff_s_q_neg_val_selected_range [expr $ff_s_q_neg_val_selected_range + $ff_s_q_neg_values]
         }
         incr q_idx
     }
@@ -2762,28 +2255,22 @@ proc ::SQGUI::DisplayStatsForSelections {} {
         set selection_rbins_plot [multiplot -x $rbin_x -y $s_q_rbin_contributions_selected_range -title "Selections - contributions to S(q) and Form factor weighted S(q) plot ($sel1_20-$sel2_20)" \
                                                 -legend "S(q)" -nolines -fillcolor red -linecolor red -marker point -radius 2 -plot]
 
-        # if {$display_FormFactorWeighted_Results != 0} then {
-            # plot rbin contributions to form factor weighted s(q) for the selected q range
-            $selection_rbins_plot add $rbin_x $ff_s_q_rbin_contributions_selected_range -nolines -fillcolor blue -legend "Form factor weighted S(q)- Full denominator" -marker square -radius 2 -plot
-        # }             
+        # plot rbin contributions to form factor weighted s(q) for the selected q range
+        $selection_rbins_plot add $rbin_x $ff_s_q_rbin_contributions_selected_range -nolines -fillcolor blue -legend "Form factor weighted S(q)- Full denominator" -marker square -radius 2 -plot
     } 
 
     set s_q_pos_neg_val_selected_range [expr $s_q_pos_val_selected_range + abs($s_q_neg_val_selected_range)]
-    
     set s_q_val_selected_range [expr {double(round(100000*$s_q_val_selected_range))/100000}]
     set s_q_pos_val_selected_range [expr {double(round(100000*$s_q_pos_val_selected_range))/100000}]
     set s_q_neg_val_selected_range [expr {double(round(100000*$s_q_neg_val_selected_range))/100000}]
     set s_q_pos_neg_val_selected_range [expr {double(round(100000*$s_q_pos_neg_val_selected_range))/100000}]
 
-    # if {$display_FormFactorWeighted_Results != 0} then {
-        set ff_s_q_pos_neg_val_selected_range [expr $ff_s_q_pos_val_selected_range + abs($ff_s_q_neg_val_selected_range)]
-
-        set ff_s_q_val_selected_range [expr {double(round(100000*$ff_s_q_val_selected_range))/100000}]
-        set ff_s_q_pos_val_selected_range [expr {double(round(100000*$ff_s_q_pos_val_selected_range))/100000}]
-        set ff_s_q_neg_val_selected_range [expr {double(round(100000*$ff_s_q_neg_val_selected_range))/100000}]
-        set ff_s_q_pos_neg_val_selected_range [expr {double(round(100000*$ff_s_q_pos_neg_val_selected_range))/100000}]
-    # }
-
+    set ff_s_q_pos_neg_val_selected_range [expr $ff_s_q_pos_val_selected_range + abs($ff_s_q_neg_val_selected_range)]
+    set ff_s_q_val_selected_range [expr {double(round(100000*$ff_s_q_val_selected_range))/100000}]
+    set ff_s_q_pos_val_selected_range [expr {double(round(100000*$ff_s_q_pos_val_selected_range))/100000}]
+    set ff_s_q_neg_val_selected_range [expr {double(round(100000*$ff_s_q_neg_val_selected_range))/100000}]
+    set ff_s_q_pos_neg_val_selected_range [expr {double(round(100000*$ff_s_q_pos_neg_val_selected_range))/100000}]
+    
     wm title . "Results for Selections" 
     ## destroy the window if already exists. 
     if {[catch { destroy .gui } ]} then {puts "window destroyed!!"}
@@ -2808,45 +2295,33 @@ proc ::SQGUI::DisplayStatsForSelections {} {
     set l0 [label $cur_UI.lable_Sq1 -text "          " -justify right -font {helvetica 12 bold}]
     set l1 [label $cur_UI.lable_Sq2 -text "S(q)" -justify right -font {helvetica 12 bold}]
 
-    # if {$display_FormFactorWeighted_Results != 0} then {
-        set l2 [label $cur_UI.lable_Sq3 -text "Form Factor Weighted S(q)- Full denominator" -justify left -font {helvetica 12 bold}]
-        grid $l0 $l1 $l2 
-    # } else {
-        grid $l0 $l1 
-    # }
+    set l2 [label $cur_UI.lable_Sq3 -text "Form Factor Weighted S(q)- Full denominator" -justify left -font {helvetica 12 bold}]
+    grid $l0 $l1 $l2 
+    grid $l0 $l1 
 
     set l3 [label $cur_UI.lable_Sq -text "S(q): " -justify right -font {helvetica 12 bold}]
     set l4 [label $cur_UI.lable_Sq_val1 -text $s_q_val_selected_range -justify left -font {helvetica 12 bold}]
-    # if {$display_FormFactorWeighted_Results != 0} then {
-        set l5 [label $cur_UI.lable_Sq_val2 -text $ff_s_q_val_selected_range -justify left -font {helvetica 12 bold}]
-        grid $l3 $l4 $l5 
-    # } else {
-        grid $l3 $l4
-    # }
+    set l5 [label $cur_UI.lable_Sq_val2 -text $ff_s_q_val_selected_range -justify left -font {helvetica 12 bold}]
+    grid $l3 $l4 $l5
+    grid $l3 $l4 
+
     set l6 [label $cur_UI.lable_Sq_pos -text "Positive contribution: " -justify right -font {helvetica 12 bold}]
     set l7 [label $cur_UI.lable_Sq_pos_val1 -text $s_q_pos_val_selected_range -justify left -font {helvetica 12 bold}]
-    # if {$display_FormFactorWeighted_Results != 0} then {
-        set l8 [label $cur_UI.lable_Sq_pos_val2 -text $ff_s_q_pos_val_selected_range -justify left -font {helvetica 12 bold}]
-        grid $l6 $l7 $l8
-    # } else {
-        grid $l6 $l7
-    # }
+    set l8 [label $cur_UI.lable_Sq_pos_val2 -text $ff_s_q_pos_val_selected_range -justify left -font {helvetica 12 bold}]
+    grid $l6 $l7 $l8
+    grid $l6 $l7
+
     set l9 [label $cur_UI.lable_Sq_neg -text "Negative contribution: " -justify right -font {helvetica 12 bold}]
     set l10 [label $cur_UI.lable_Sq_neg_val1 -text $s_q_neg_val_selected_range -justify left -font {helvetica 12 bold}]
-    # if {$display_FormFactorWeighted_Results != 0} then {
-        set l11 [label $cur_UI.lable_Sq_neg_val2 -text $ff_s_q_neg_val_selected_range -justify left -font {helvetica 12 bold}]
-        grid $l9 $l10 $l11
-    # } else {
-        grid $l9 $l10
-    # }
+    set l11 [label $cur_UI.lable_Sq_neg_val2 -text $ff_s_q_neg_val_selected_range -justify left -font {helvetica 12 bold}]
+    grid $l9 $l10 $l11
+    grid $l9 $l10
+    
     set l12 [label $cur_UI.lable_Sq_pos_neg -text "Positive + magnitude of negative contribution: " -justify right -font {helvetica 12 bold}]
     set l13 [label $cur_UI.lable_Sq_pos_neg_val1 -text $s_q_pos_neg_val_selected_range -justify left -font {helvetica 12 bold}]
-    # if {$display_FormFactorWeighted_Results != 0} then {
-        set l14 [label $cur_UI.lable_Sq_pos_neg_val2 -text $ff_s_q_pos_neg_val_selected_range -justify left -font {helvetica 12 bold}]
-        grid $l12 $l13 $l14 
-    # } else {
-        grid $l12 $l13
-    # }
+    set l14 [label $cur_UI.lable_Sq_pos_neg_val2 -text $ff_s_q_pos_neg_val_selected_range -justify left -font {helvetica 12 bold}]
+    grid $l12 $l13 $l14 
+    grid $l12 $l13
     
     foreach key [dict keys $selection_atom_contributions] {
         set key_group [dict get $atoms_groupNames $key]
@@ -2858,7 +2333,6 @@ proc ::SQGUI::DisplayStatsForSelections {} {
         
         for {set cur_q $min_q} {$cur_q <= $adjusted_rightBin} {set cur_q [expr {$cur_q + $delta_q}]} {
             if {$cur_q >= $adjusted_leftBin} {
-                #set s_q_for_selection [expr $s_q_for_selection + [expr [lindex $s_q_contributions $q_idx] * [lindex $key_ff $q_idx]]]  
                 set s_q_for_selection [expr $s_q_for_selection + [lindex $s_q_contributions $q_idx] ]
             }
             incr q_idx
@@ -2868,13 +2342,11 @@ proc ::SQGUI::DisplayStatsForSelections {} {
     set topN_Sorted [lsort -real -index 1 -decreasing $topN_list]    
     set cntr 0
     set sorted_atoms "serial "
-    # set atom_types {}
     set atom_properties {}
     foreach {pair} $topN_Sorted {        
         incr cntr
         lappend x_bins $cntr
         lappend y_bins [lindex $pair 1]
-        # lappend atom_types [lindex $pair 2]
         append sorted_atoms "[lindex $pair 0] "
         lappend atom_beta_by_Rank [list [lindex $pair 0] $cntr]
         lappend atom_beta_by_Score [list [lindex $pair 0] [lindex $pair 1]]
@@ -2895,7 +2367,6 @@ proc ::SQGUI::DisplayStatsForSelections {} {
      } 
     if {[catch {$bins_plot quit} ]} then {}
     set rank_plot [multiplot -x $x_bins -y $y_bins -title "Top Contributors" -lines -linewidth 2 -marker point -plot ]  
-    # $rank_plot add $x_bins $atom_types    
     $rank_plot add $x_bins $atom_properties
 
     if {$displayAtoms} {
@@ -2914,73 +2385,347 @@ proc ::SQGUI::DisplayStatsForSelections {} {
     $w.in2.topNframe.bt configure -command [namespace code UpdateRenderer]
 }
 
-proc ::SQGUI::computeAllPossiblePartials {} {
+proc ::SQGUI::UpdateRenderer {val} {
+    
+    global topN_Sorted
+    global rank_plot
+    global selection_atom_contributions
+    global atoms_groupNames
+    global group_formfactors
 
-    global groupPair_formfactors
-    global possible_sq_contributions
-    global possible_sq_contribution_differences
+    variable w
+    variable molid
+    variable displayAtoms
+    variable addBeta
+    variable input_file_path
+    variable min_q
+    variable max_q
+    variable delta_q
+    variable leftBin
+    variable rightBin 
 
-    set possible_sq_contributions {}
-    set possible_sq_contribution_differences {}
-    set s_q_pos_contributions {}
-    set s_q_neg_contributions {}
-    set y_partial_gofr_sum {}
-    set x_partial_sofq {}
-    set y_partial_sofq_sum {}
+    variable vis_selection1
+    variable selection1_colorId
+    variable selection1_color_method
+    variable selection1_material
+    variable selection1_draw_method
+    variable vis_selection2
+    variable selection2_colorId
+    variable selection2_color_method
+    variable selection2_material
+    variable selection2_draw_method
+    variable vis_selection3
+    variable selection3_colorId
+    variable selection3_color_method
+    variable selection3_material
+    variable selection3_draw_method
+    variable vis_selection4
+    variable selection4_colorId
+    variable selection4_color_method
+    variable selection4_material
+    variable selection4_draw_method
+    variable vis_selection5
+    variable selection5_colorId
+    variable selection5_color_method
+    variable selection5_material
+    variable selection5_draw_method
+    variable atom_beta_by_Rank_Sorted
+    variable atom_beta_by_Score_Sorted
+    variable atom_beta_by_Score
+    variable molecule_beta_by_Rank
+    variable molecule_beta_by_Score
 
-    variable delta
-    variable rmax
-    set numbins [expr $rmax / $delta]
-    set pair_weight 1 
+    set selected_atoms "serial"
+    set selected_atom [$w.in2.topNframe.bt get]
+    set selected_topnN [$w.in2.topNframe.at get]
+    set molecule_beta_by_Rank {}
+    set molecule_beta_by_Score {}
+    set molecule_beta_by_Rank_Sorted {}
+    set molecule_beta_by_Score_Sorted {}
+    set neighbor_beta_by_Score {}
+    set neighbor_beta_by_Rank {}
+    set x_bins {}
+    set y_bins {}
 
-    for {set bin 0} {$bin < $numbins} {incr bin} {    
-
-        # Compute g(r) for current bin with count 1
-        set cur_grp_pair_counts_dict {}
-        dict append cur_grp_pair_counts_dict $bin 1
-        set partial_gofr_result_1 [get_partial_g_r $cur_grp_pair_counts_dict $pair_weight]
-        set y_partial_gofr_1 [lindex $partial_gofr_result_1 1]
-        # Compute g(r) for current bin with count 2
-        set cur_grp_pair_counts_dict {}
-        dict append cur_grp_pair_counts_dict $bin 2
-        set partial_gofr_result_2 [get_partial_g_r $cur_grp_pair_counts_dict $pair_weight]
-        set y_partial_gofr_2 [lindex $partial_gofr_result_2 1]
-
-        # puts "$y_partial_gofr"
-        
-        # Compute s(q) using g(r) for a bin with count 1
-        set partial_sofq_result_1 [get_partial_s_q_with_contributions $y_partial_gofr_1 $pair_weight]
-        set y_partial_sofq_1 [lindex $partial_sofq_result_1 0] 
-        set s_q_pos_contributions_1 [lindex $partial_sofq_result_1 1] 
-        set s_q_neg_contributions_1 [lindex $partial_sofq_result_1 2] 
-
-        # Compute s(q) using g(r) for a bin with count 2
-        set partial_sofq_result_2 [get_partial_s_q_with_contributions $y_partial_gofr_2 $pair_weight]
-        set y_partial_sofq_2 [lindex $partial_sofq_result_2 0] 
-        set s_q_pos_contributions_2 [lindex $partial_sofq_result_2 1] 
-        set s_q_neg_contributions_2 [lindex $partial_sofq_result_2 2]   
-
-        # Save the S(q), Positive and Negative contributions to S(q) when bin count is 1
-        lappend possible_sq_contributions [list $y_partial_sofq_1 $s_q_pos_contributions_1 $s_q_neg_contributions_1]
-
-        ## Save the differences in S(q), Positive and Negative contributions to S(q) when bin count is 2 and 1
-        for {set q_idx 0} {$q_idx < [llength $y_partial_sofq_2]} {incr q_idx} {
-            lset y_partial_sofq_2 $q_idx [expr [lindex $y_partial_sofq_2 $q_idx] - [lindex $y_partial_sofq_1 $q_idx]]
-            lset s_q_pos_contributions_2 $q_idx [expr [lindex $s_q_pos_contributions_2 $q_idx] - [lindex $s_q_pos_contributions_1 $q_idx]]
-            lset s_q_neg_contributions_2 $q_idx [expr [lindex $s_q_neg_contributions_2 $q_idx] - [lindex $s_q_neg_contributions_1 $q_idx]]
+    display update off
+    color scale method BWR
+    display update on
+    for {set i 0} {$i < 7} {incr i} {
+        mol delrep 0 top
+    }
+    if {$selected_atom == 0} {
+        set sorted_atoms "serial "
+        foreach {pair} $topN_Sorted {     
+            append sorted_atoms "[lindex $pair 0] "    
         }
-        lappend possible_sq_contribution_differences [list $y_partial_sofq_2 $s_q_pos_contributions_2 $s_q_neg_contributions_2] 
-    }       
+        foreach {pair} [lrange $topN_Sorted 0 [expr $selected_topnN -1]] {     
+            set selected_atoms [concat $selected_atoms " " [lindex $pair 0]]                                
+        }
+        
+        if {$displayAtoms} then { 
+            set sel1Str $selected_atoms
+            set sel2Str $selected_atoms
+            set sel3Str $selected_atoms
+            set sel4Str $selected_atoms
+            set sel5Str $selected_atoms
 
-    if {0} {
-
-        if { [llength $y_partial_sofq_sum] == 0 } then {
-            set y_partial_sofq_sum $y_partial_sofq
         } else {
-            for {set i 0} {$i < [llength $y_partial_sofq_sum]} {incr i} {
-                lset y_partial_sofq_sum $i [expr [lindex $y_partial_sofq $i] + [lindex $y_partial_sofq_sum $i]]
+            
+            set sel1Str "same resid as ( $selected_atoms )"
+            set sel2Str "same resid as ( $selected_atoms )"
+            set sel3Str "same resid as ( $selected_atoms )"
+            set sel4Str "same resid as ( $selected_atoms )"
+            set sel5Str "same resid as ( $selected_atoms )"
+        }               
+    } else {
+        set neighbour_contributions_file $input_file_path            
+        append neighbour_contributions_file "neighbour_contributions_sq.dat"
+        set tstfile [open $neighbour_contributions_file r]
+        set topN_list {}
+        set required_atoms [dict keys $selection_atom_contributions]
+        while { [gets $tstfile line] >= 0 } {
+            set startIdx 0
+            set curIdx [string first "\{" $line $startIdx]        
+            if {$curIdx > 0} {
+                set atom_key [string trim [string range $line 0 [expr $curIdx-1]] "\{\} " ]
+                if {$atom_key == $selected_atom} { 
+                    incr readLinesCnt
+                    set neighbour_total_contribution {}
+                    set startIdx [expr $curIdx +1]
+                    set curIdx [string first "\{" $line $startIdx ]             
+                    while {$curIdx > 0} {
+                        set neighbour_key [string trim [string range $line $startIdx [expr $curIdx-1]] "\{\} " ]                        
+                        set curEndIdx [string first "\}" $line [expr $curIdx+1] ]  
+                        if {[lsearch -exact $required_atoms $neighbour_key] >= 0} { 
+                            set startIdx [expr $curIdx +1]
+                            set neighbour_Sq [split [string trim [string range $line $startIdx [expr $curEndIdx-1]] "\{\} " ] " "]
+
+                            set s_q_for_selection 0
+                            set q_idx 0
+                            for {set cur_q $min_q} {$cur_q <= $rightBin} {set cur_q [expr {$cur_q + $delta_q}]} {
+                                if {$cur_q >= $leftBin} {
+                                    set s_q_for_selection [expr $s_q_for_selection + [lindex $neighbour_Sq $q_idx]]  
+                                }
+                                incr q_idx
+                            }
+                            set key_group [dict get $atoms_groupNames $neighbour_key]
+                            set key_ff [dict get $group_formfactors $key_group]
+                            lappend topN_list [list $neighbour_key $s_q_for_selection $key_group]
+                        }
+                        set startIdx [expr $curEndIdx + 1]
+                        set curIdx [string first "\{" $line $startIdx]                    
+                    }
+                    break                
+                }
+            }              
+        }
+        close $tstfile
+
+        set topN_Neighbours_Sorted [lsort -real -index 1 -decreasing $topN_list]
+        set cntr 0
+        set sorted_atoms "serial "
+        set atom_properties {}
+
+        foreach {pair} $topN_Neighbours_Sorted {
+            incr cntr
+            lappend x_bins $cntr
+            lappend y_bins [lindex $pair 1]
+            append sorted_atoms "[lindex $pair 0] "
+            lappend neighbor_beta_by_Rank [list [lindex $pair 0] $cntr]
+            lappend neighbor_beta_by_Score [list [lindex $pair 0] [lindex $pair 1]]
+
+            set tmpsel [atomselect $molid "serial [lindex $pair 0]"]
+            set cur_atom_props "[lindex $pair 2],"
+            append cur_atom_props [join [$tmpsel get {type name residue resname resid chain}] ","]
+            set cur_atom_props [join $cur_atom_props ","]
+            lappend atom_properties "$cur_atom_props"           
+        }  
+
+        set neighbor_beta_by_Rank [lsort -real -index 0 $neighbor_beta_by_Rank]    
+        set neighbor_beta_by_Score [lsort -real -index 0 $neighbor_beta_by_Score]   
+        set neighbor_beta_by_Rank_Sorted {}
+        set neighbor_beta_by_Score_Sorted {}
+        for {set i_beta 0} {$i_beta < [llength $neighbor_beta_by_Rank]} {incr i_beta} {
+             lappend neighbor_beta_by_Rank_Sorted [lindex [lindex $neighbor_beta_by_Rank $i_beta] 1]
+             lappend neighbor_beta_by_Score_Sorted [lindex [lindex $neighbor_beta_by_Score $i_beta] 1]
+         } 
+
+        if {[catch {$rank_plot quit} ]} then {}
+        set rank_plot [multiplot -x $x_bins -y $y_bins -title "Top Neighbors" -lines -linewidth 2 -marker point -plot ]   
+        $rank_plot add $x_bins $atom_properties       
+
+        foreach {pair} [lrange $topN_Neighbours_Sorted 0 [expr $selected_topnN -1]] {     
+            set selected_atoms [concat $selected_atoms " " [lindex $pair 0]]
+        }
+        
+        if {$displayAtoms} then { 
+            set sel1Str $selected_atoms
+            set sel2Str $selected_atoms
+            set sel3Str $selected_atoms
+            set sel4Str $selected_atoms
+            set sel5Str $selected_atoms
+        } else {
+            
+            set sel1Str "same resid as ( $selected_atoms )"
+            set sel2Str "same resid as ( $selected_atoms )"
+            set sel3Str "same resid as ( $selected_atoms )"
+            set sel4Str "same resid as ( $selected_atoms )"
+            set sel5Str "same resid as ( $selected_atoms )"
+        }    
+    }  
+
+    if {$displayAtoms} {
+        set sel_all [atomselect $molid $sorted_atoms ]        
+        if {$addBeta} {
+            #atoms by rank
+            $sel_all set beta 0
+            if {$selected_atom == 0} {
+                $sel_all set beta $atom_beta_by_Rank_Sorted
+            } else {
+                $sel_all set beta $neighbor_beta_by_Rank_Sorted
+            }
+        } else {
+            #atoms by score
+            $sel_all set beta 0
+
+            if {$selected_atom == 0} {
+                $sel_all set beta $atom_beta_by_Score_Sorted
+            } else {
+                $sel_all set beta $neighbor_beta_by_Score_Sorted
             }
         }
+    } else {
+        
+        set all_atoms_test [atomselect $molid "all"]
+        $all_atoms_test set beta 0
+        set all_molecules [$all_atoms_test get {serial resid}]
+
+        set sel_atoms [atomselect $molid $selected_atoms ]        
+        set selected_molecules [ $sel_atoms get {serial resid}]
+        set molecules_count [dict create]
+        set molecules_score [dict create]
+
+        if {$addBeta} {
+            #molecules by rank
+            foreach var $selected_molecules {
+                if {[dict exists $molecules_count [lindex $var 1]]} then {
+                    dict set molecules_count [lindex $var 1] [expr [dict get $molecules_count [lindex $var 1]] + 1]
+                } else {
+                    dict set molecules_count [lindex $var 1] 1
+                }
+            }
+            foreach var $all_molecules {
+                if {[dict exists $molecules_count [lindex $var 1]]} then {
+                    lappend molecule_beta_by_Rank [dict get $molecules_count [lindex $var 1]]
+                } else {
+                    lappend molecule_beta_by_Rank 0
+                }            
+            }
+
+            $all_atoms_test set beta $molecule_beta_by_Rank
+        } else {
+            #molecules by score
+            set idx 0
+            foreach var $selected_molecules {
+                set tmp_score 0
+                if {$selected_atom == 0} {
+                    set tmp_score [lindex $atom_beta_by_Score_Sorted [lindex $var 0]]
+                } else {
+                    set tmp_score [lindex $y_bins $idx]
+                }
+                if {[dict exists $molecules_score $var]} then {
+                    dict set molecules_score [lindex $var 1] [expr [dict get $molecules_score [lindex $var 1]] + $tmp_score]
+                } else {
+                    dict set molecules_score [lindex $var 1] $tmp_score
+                }
+                incr idx
+            }
+            foreach var $all_molecules {
+                if {[dict exists $molecules_score [lindex $var 1]]} then {
+                    lappend molecule_beta_by_Score [dict get $molecules_score [lindex $var 1]]
+                } else {
+                    lappend molecule_beta_by_Score 0
+                } 
+            }
+
+            puts "rank - $molecule_beta_by_Score"
+            $all_atoms_test set beta $molecule_beta_by_Score
+        }
+    } 
+
+    if {$vis_selection1 != ""} {            
+        append sel1Str " and $vis_selection1"
+        set sel1 [atomselect $molid $sel1Str ] 
+        mol selection "[$sel1 text]" 
+        if {$selection1_color_method=="ColorID"} then {
+            mol color ColorID $selection1_colorId
+        } else {
+            mol color $selection1_color_method
+        }
+        mol material $selection1_material                
+        mol representation $selection1_draw_method
+        mol addrep top
+    }
+    if {$vis_selection2 != ""} {
+        append sel2Str " and $vis_selection2"
+        set sel2 [atomselect $molid $sel2Str ] 
+        mol selection "[$sel2 text]" 
+        if {$selection2_color_method=="ColorID"} then {
+            mol color ColorID $selection2_colorId
+        } else {
+            mol color $selection2_color_method
+        }
+        mol material $selection2_material                
+        mol representation $selection2_draw_method
+        mol addrep top
+    }
+    if {$vis_selection3 != ""} {
+        append sel3Str " and $vis_selection3"
+        set sel3 [atomselect $molid $sel3Str ] 
+        mol selection "[$sel3 text]" 
+        if {$selection3_color_method=="ColorID"} then {
+            mol color ColorID $selection3_colorId
+        } else {
+            mol color $selection3_color_method
+        }
+        mol material $selection3_material                
+        mol representation $selection3_draw_method
+        mol addrep top
+    }
+    if {$vis_selection4 != ""} {
+        append sel4Str " and $vis_selection4"
+        set sel4 [atomselect $molid $sel4Str ] 
+        mol selection "[$sel4 text]" 
+        if {$selection4_color_method=="ColorID"} then {
+            mol color ColorID $selection4_colorId
+        } else {
+            mol color $selection4_color_method
+        }
+        mol material $selection4_material                
+        mol representation $selection4_draw_method
+        mol addrep top
+    }
+    if {$vis_selection5 != ""} {
+        append sel1Str " and $vis_selection5"
+        set sel5 [atomselect $molid $sel1Str ] 
+        mol selection "[$sel5 text]" 
+        if {$selection5_color_method=="ColorID"} then {
+            mol color ColorID $selection5_colorId
+        } else {
+            mol color $selection5_color_method
+        }
+        mol material $selection5_material                
+        mol representation $selection5_draw_method
+        mol addrep top
+    } 
+
+    if {$selected_atom != 0} {
+        set chosenAtom "serial $selected_atom"
+        set atom_sel [atomselect $molid $chosenAtom]  
+        mol selection "[$atom_sel text]" 
+        mol color ColorID 8
+        mol representation VDW
+        mol addrep top 
     }
 }
 
@@ -3014,8 +2759,6 @@ proc ::SQGUI::sqgui {args} {
     labelframe $w.sel -bd 2 -relief ridge -text "Selections:" -padx 1m -pady 1m
     # frame for settings
     labelframe $w.in1 -bd 2 -relief ridge -text "q range of Interest:" -padx 1m -pady 1m
-    # computation action button
-    # button $w.foot1 -text {Compute Rankings} -command [namespace code DisplayStatsForSelections]
     # frame for settings
     labelframe $w.in2 -bd 2 -relief ridge -text "Visualization Settings:" -padx 1m -pady 1m
 
@@ -3024,14 +2767,12 @@ proc ::SQGUI::sqgui {args} {
     grid $w.foot    -row 1 -column 0 -sticky sew
     grid $w.sel    -row 2 -column 0 -sticky sew
     grid $w.in1    -row 3 -column 0 -sticky sew
-    # grid $w.foot1    -row 4 -column 0 -sticky sew
     grid $w.in2    -row 4 -column 0 -sticky sew
     grid columnconfigure $w 0 -minsize 580 -weight 1
     grid rowconfigure    $w 0 -weight 10   -minsize 150
     grid rowconfigure    $w 1 -weight 1    -minsize 25
     grid rowconfigure    $w 2 -weight 1    -minsize 40
     grid rowconfigure    $w 3 -weight 1    -minsize 50
-    # grid rowconfigure    $w 4 -weight 1    -minsize 25
     grid rowconfigure    $w 4 -weight 1    -minsize 80
 
     # frame for g(r) settings
@@ -3233,13 +2974,12 @@ proc ::SQGUI::sqgui {args} {
     label $i.temp2 -text "  "
     button $i.showVis -text {Update Visualization} -command [namespace code UpdateRenderer]
     grid $i.al $i.at $i.bl $i.bt $i.temp2  -row 0 -sticky snew 
-    #$i.showVis
+    
     grid columnconfigure $i 0 -weight 2
     grid columnconfigure $i 1 -weight 4
     grid columnconfigure $i 2 -weight 2
     grid columnconfigure $i 3 -weight 4
     grid columnconfigure $i 4 -weight 1
-    # grid columnconfigure $i 5 -weight 3
 
     #top N atoms or molecules frame
     set i $w.in2.topNOptionframe
@@ -3252,7 +2992,6 @@ proc ::SQGUI::sqgui {args} {
     radiobutton $i.betaRank    -text "Rank" -variable ::SQGUI::addBeta  -value "1"
     radiobutton $i.betaScore -text "Score" -variable ::SQGUI::addBeta  -value "0"
     label $i.tmp1 -text "  "
-    checkbutton $i.useFFWeight -text "Weight by form factor" -variable ::SQGUI::ffWeightedContribution 
 
     label $i.al1 -text "Selection1:" 
     entry $i.at1 -width 20 -textvariable ::SQGUI::vis_selection1
@@ -3263,14 +3002,6 @@ proc ::SQGUI::sqgui {args} {
     ttk::combobox $i.a_cb1 -textvariable ::SQGUI::selection1_color_method -values $color_methods -width 15 -justify left -state normal
     set selection1_color_method "ColorID"
     $i.a_cb1 set "ColorID"
-    # bind $i.a_cb1 <<ComboboxSelected>> {
-    #     puts "$selection1_color_method"
-    #     if {$selection1_color_method=="ColorID"} then {
-    #         .sqgui.in2.topNOptionframe.a_cb2 configure -state normal
-    #     } else {
-    #         .sqgui.in2.topNOptionframe.a_cb2 configure -state disabled
-    #     }
-    # }
 
     label $i.al3 -text "ColorID:"
     set colors {}
@@ -3278,21 +3009,18 @@ proc ::SQGUI::sqgui {args} {
         lappend colors $k   
     }
     ttk::combobox $i.a_cb2 -textvariable ::SQGUI::selection1_colorId -values $colors -width 5 -justify left -state normal
-    # set selection1_colorId 0
     $i.a_cb2 set 0
 
     label $i.al4 -text "Material:"
     set materials {"Opaque" "Transparent" "BrushedMetal" "Diffuse" "Ghost" "Glass1" "Glass2" "Glass3" "Glossy" "HardPlastic" "MetallicPastel" 
                     "Steel" "Translucent" "Edgy" "EdgyShiny" "EdgyGlass" "Goodsell" "AOShiny" "AOChalky" "AOEdgy" "BlownGlass" "GlassBubble" "RTChrome"}
     ttk::combobox $i.a_cb3 -textvariable ::SQGUI::selection1_material -values $materials -width 15 -justify left -state normal
-    # set selection1_material "Transparent"
     $i.a_cb3 set "Transparent"
 
     label $i.al5 -text "Drawing Method:"
     set draw_methods {"Lines" "Bonds" "DynamicBonds" "Points" "VDW" "CPK" "Licorice" "Polyhedra" "Trace" "Tube" "Ribbons" "NewRibbons" "Cartoon" 
                         "NewCartoon" "QuickSurf" "Surf" "Beads" "Dotted" "Solvent"}
     ttk::combobox $i.a_cb4 -textvariable ::SQGUI::selection1_draw_method -values $draw_methods -width 15 -justify left -state normal
-    # set selection1_draw_method "VDW"
     $i.a_cb4 set "VDW"
 
     label $i.bl1 -text "Selection2:" 
@@ -3302,13 +3030,6 @@ proc ::SQGUI::sqgui {args} {
     ttk::combobox $i.b_cb1 -textvariable ::SQGUI::selection2_color_method -values $color_methods -width 15 -justify left -state normal
     set selection2_color_method "ColorID"
     $i.b_cb1 set "ColorID"
-    # bind $i.b_cb1 <<ComboboxSelected>> {
-    #     if {$selection2_color_method=="ColorID"} {
-    #         .sqgui.in2.topNOptionframe.b_cb2 configure -state normal
-    #     } else {
-    #         .sqgui.in2.topNOptionframe.b_cb2 configure -state disabled
-    #     }
-    # }
 
     label $i.bl3 -text "ColorID:"
     ttk::combobox $i.b_cb2 -textvariable ::SQGUI::selection2_colorId -values $colors -width 5 -justify left -state disabled
@@ -3332,13 +3053,6 @@ proc ::SQGUI::sqgui {args} {
     ttk::combobox $i.c_cb1 -textvariable ::SQGUI::selection3_color_method -values $color_methods -width 15 -justify left -state normal
     set selection3_color_method "ColorID"
     $i.c_cb1 set "ColorID"
-    # bind $i.c_cb1 <<ComboboxSelected>> {
-    #     if {$selection3_color_method=="ColorID"} {
-    #         .sqgui.in2.topNOptionframe.c_cb2 configure -state normal
-    #     } else {
-    #         .sqgui.in2.topNOptionframe.c_cb2 configure -state disabled
-    #     }
-    # }
 
     label $i.cl3 -text "ColorID:"
     ttk::combobox $i.c_cb2 -textvariable ::SQGUI::selection3_colorId -values $colors -width 5 -justify left -state disabled
@@ -3361,13 +3075,6 @@ proc ::SQGUI::sqgui {args} {
     ttk::combobox $i.d_cb1 -textvariable ::SQGUI::selection4_color_method -values $color_methods -width 15 -justify left -state normal
     set selection4_color_method "ColorID"
     $i.d_cb1 set "ColorID"
-    # bind $i.d_cb1 <<ComboboxSelected>> {
-    #     if {$selection4_color_method=="ColorID"} {
-    #         .sqgui.in2.topNOptionframe.d_cb2 configure -state normal
-    #     } else {
-    #         .sqgui.in2.topNOptionframe.d_cb2 configure -state disabled
-    #     }
-    # }
 
     label $i.dl3 -text "ColorID:"
     ttk::combobox $i.d_cb2 -textvariable ::SQGUI::selection4_colorId -values $colors -width 5 -justify left -state disabled
@@ -3391,13 +3098,6 @@ proc ::SQGUI::sqgui {args} {
     ttk::combobox $i.e_cb1 -textvariable ::SQGUI::selection5_color_method -values $color_methods -width 15 -justify left -state normal
     set selection5_color_method "ColorID"
     $i.e_cb1 set "ColorID"
-    # bind $i.e_cb1 <<ComboboxSelected>> {
-    #     if {$selection5_color_method=="ColorID"} {
-    #         .sqgui.in2.topNOptionframe.e_cb2 configure -state normal
-    #     } else {
-    #         .sqgui.in2.topNOptionframe.e_cb2 configure -state disabled
-    #     }
-    # }
 
     label $i.el3 -text "ColorID:"
     ttk::combobox $i.e_cb2 -textvariable ::SQGUI::selection5_colorId -values $colors -width 5 -justify left -state disabled
@@ -3419,8 +3119,7 @@ proc ::SQGUI::sqgui {args} {
     grid $i.cl1 $i.ct1  $i.cl2 $i.c_cb1 $i.cl3 $i.c_cb2 $i.cl4 $i.c_cb3 $i.cl5 $i.c_cb4 -row 2 -sticky snew
     grid $i.dl1 $i.dt1  $i.dl2 $i.d_cb1 $i.dl3 $i.d_cb2 $i.dl4 $i.d_cb3 $i.dl5 $i.d_cb4 -row 3 -sticky snew
     grid $i.el1 $i.et1  $i.el2 $i.e_cb1 $i.el3 $i.e_cb2 $i.el4 $i.e_cb3 $i.el5 $i.e_cb4 -row 4 -sticky snew
-    grid $i.choosel $i.dispmolecules  $i.dispatoms $i.tmp $i.betal $i.betaRank  $i.betaScore $i.tmp1 $i.useFFWeight -row 5 -sticky snew
-    #grid $i.betal $i.betaRank  $i.betaScore -row 6 -sticky snew
+    grid $i.choosel $i.dispmolecules  $i.dispatoms $i.tmp $i.betal $i.betaRank  $i.betaScore $i.tmp1 -row 5 -sticky snew
 
     grid columnconfigure $i 0 -weight 2
     grid columnconfigure $i 1 -weight 2
@@ -3480,7 +3179,6 @@ proc ::SQGUI::EnDisable {args} {
         $w.in2.topNOptionframe.dispmolecules configure -state disabled
         $w.in2.topNOptionframe.betaRank configure -state disabled
         $w.in2.topNOptionframe.betaScore configure -state disabled
-        $w.in2.topNOptionframe.useFFWeight configure -state disabled
         $w.in2.topNframe.showVis configure -state disabled
 
     } else {
@@ -3496,7 +3194,6 @@ proc ::SQGUI::EnDisable {args} {
         $w.in2.topNOptionframe.dispmolecules configure -state disabled
         $w.in2.topNOptionframe.betaRank configure -state disabled
         $w.in2.topNOptionframe.betaScore configure -state disabled
-        $w.in2.topNOptionframe.useFFWeight configure -state disabled
         $w.in2.topNframe.showVis configure -state disabled
 
         $w.in2.topNOptionframe.at1 configure -state disabled
@@ -3535,7 +3232,6 @@ proc ::SQGUI::EnDisable {args} {
         $w.in2.topNOptionframe.dispmolecules configure -state normal
         $w.in2.topNOptionframe.betaRank configure -state normal
         $w.in2.topNOptionframe.betaScore configure -state normal
-        $w.in2.topNOptionframe.useFFWeight configure -state normal
         $w.in2.topNframe.showVis configure -state normal
 
         $w.in2.topNOptionframe.at1 configure -state normal
@@ -3610,11 +3306,3 @@ proc viewsq_tk_cb {} {
   ::SQGUI::sqgui 
   return $::SQGUI::w
 }
-
-
-############################################################
-# Local Variables:
-# mode: tcl
-# time-stamp-format: "%u %02d.%02m.%y %02H:%02M:%02S %s"
-# End:
-############################################################
