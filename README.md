@@ -28,7 +28,7 @@ viewsq.tcl --
 
 1. Add the following line to /usr/local/lib/vmd/scripts/vmd/loadplugins.tcl
 
-&nbsp; vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
 
 2. Copy the folder "viewsq1.0" to /usr/local/lib/vmd/plugins/noarch/tcl
 3. Copy the file "Calculate_rdf_stats_py.py" to /usr/local/lib/vmd/scripts/python
@@ -42,7 +42,7 @@ Due to memory restrictions, in order to reasonably use viewSq with over perhaps 
 
 1. Add the following line to /Applications/VMD 1.9.3.app/Contents/vmd/scripts/loadplugins.tcl
 
-&nbsp; vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
 
 2. Copy the folder "viewsq1.0" to /Applications/VMD 1.9.3.app/Contents/vmd/plugins/noarch/tcl
 3. Copy the file "Calculate_rdf_stats_py.py" to /Applications/VMD 1.9.3.app/Contents/vmd/scripts/python
@@ -56,7 +56,7 @@ Due to memory restrictions, in order to reasonably use viewSq with over perhaps 
 
 1. Add the following line to \VMD\scripts\vmd\loadplugins.tcl
 
-&nbsp; vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
 
 2. Copy the folder "viewsq1.0" to \VMD\plugins\noarch\tcl
 3. Copy the file "Calculate_rdf_stats_py.py" to \VMD\scripts\vmd
@@ -70,33 +70,34 @@ While using viewSq, keep elements.ndx in the same folder where the input traject
 2.  Determine how many atoms there are in the simulation.
 3.  Create a file named (elements.ndx) of the following format:
 
-[ H  ]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [ H  ]
 
-1 2 3 4 5 6 7 8 9 10 ... 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1 2 3 4 5 6 7 8 9 10 ... 
 
-The file will contain two lines and the numbering will end with the final atom number (the number you determined in step #1).
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; The file will contain two lines and the numbering will end with the final atom number (the number you determined in step #1).
 
-Don't make the above text file in Windows, as there may then be hidden characters. Maybe you can write a short Python script to create the file for you.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Don't make the above text file in Windows, as there may then be hidden characters. Maybe you can write a short Python script to create the file for you.
 
-For reference here is the documentation (it's really short!) for .ndx files: http://manual.gromacs.org/online/ndx.html
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; For reference here is the documentation (it's really short!) for .ndx files: http://manual.gromacs.org/online/ndx.html
 
 4.  While you're at it you might as well create a second elements.ndx which has the breakdown into individual elements. Doing so will give you the ability to use viewSq to calculate form factor weighted S(q). You'll want to be able to do form factor weighted S(q) for our im and pyrr manuscripts. Remember that there will be more "lammps types" in your file than "elements". Something like 12 lammps types and seven or so elements.
 
-So
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; So
 
-[H]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [H]
 
-1 5 7 9 ...
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1 5 7 9 ...
 
-[N]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [N]
 
-2 3 8 ...
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2 3 8 ...
 
-[F]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [F]
 
-4 6 ...
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 4 6 ...
 
-VMD TkConsole can be used for many simulation types to print atom serials which correspond to each atom type.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; VMD TkConsole can be used for many simulation types to print atom serials which correspond to each atom type.
+
     1.  Load simulation
     2.  Open TkConsole
     3.  set sel [atomselect top "carbon"]
