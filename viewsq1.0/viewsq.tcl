@@ -14,7 +14,9 @@ namespace eval ::SQGUI:: {
     variable selection2    "all";   # selection string for second selection
     variable subselection1 "all";   # sub selection1 for statistics
     variable subselection2 "all";   # sub selection2 for statistics
-    variable rbinRange     "all";      # R bins range for statistics
+    variable rbinRange     "all";   # R bins range for statistics
+    variable atom_numbers_sel1 "";  # atom numbers in selection 1
+    variable atom_numbers_sel2 "";  # atom numbers in selection 2
 
     variable delta      "0.1";      # delta for histogram
     variable rmax      "10.0";      # max r in histogram
@@ -1572,6 +1574,8 @@ proc ::SQGUI::computeSelections {} {
     global all_atom_contributions
     global possible_sq_contribution_differences
     global selection_groups_weights_all_denominator
+    global atom_numbers_sel1
+    global atom_numbers_sel2
 
     variable w
     variable min_q
@@ -1602,9 +1606,10 @@ proc ::SQGUI::computeSelections {} {
     set selection_groups_weights [dict create]
     set selection_groups_same_elements_weights {}
     set same_group_pair_formfactors {} 
-    set selection_atom_contributions [dict create];
+    set selection_atom_contributions [dict create]
     set selection_groups_weights_all_denominator [dict create]
-
+    set atom_numbers_sel1 {}
+    set atom_numbers_sel2 {}
     set auto_call 1
     set pair_weight 1
     set num_atoms_in_selection 0
@@ -1625,6 +1630,10 @@ proc ::SQGUI::computeSelections {} {
             set atoms_sel2 $num_atoms
             set atoms_subSel1 $num_atoms
             set atoms_subSel2 $num_atoms
+            set sel1 [atomselect $molid "$selection1"]
+            set sel2 [atomselect $molid "$selection2"]
+            set atom_numbers_sel1 [$sel1 get serial]
+            set atom_numbers_sel2 [$sel2 get serial]
         } else {
             set selection_done 0
             # Check if the selection string contains the delimeters ':' or ','. 
@@ -2149,6 +2158,8 @@ proc ::SQGUI::DisplayStatsForSelections {} {
     global rank_plot
     global atoms_groupNames
     global group_formfactors
+    global atom_numbers_sel1
+    global atom_numbers_sel2
 
     variable displayAtoms
     variable addBeta
@@ -2351,10 +2362,19 @@ proc ::SQGUI::DisplayStatsForSelections {} {
         lappend atom_beta_by_Rank [list [lindex $pair 0] $cntr]
         lappend atom_beta_by_Score [list [lindex $pair 0] [lindex $pair 1]]
         set tmpsel [atomselect $molid "serial [lindex $pair 0]"]
-        set cur_atom_props "[lindex $pair 2],"
-        append cur_atom_props [join [$tmpsel get {type name residue resname resid chain}] ","]        
-        set cur_atom_props [join $cur_atom_props ","]
-        lappend atom_properties "$cur_atom_props"        
+        set cur_atom_props "[lindex $pair 2] "
+        append cur_atom_props [join [$tmpsel get {type name serial residue resname resid chain}] " "]        
+        set cur_atom_props [join $cur_atom_props " "]
+        set sel1_presence "no"
+        set sel2_presence "no"
+        if {[lsearch -exact $atom_numbers_sel1 [lindex $pair 0]] >= 0} {
+            set sel1_presence "yes"
+        }
+        if {[lsearch -exact $atom_numbers_sel2 [lindex $pair 0]] >= 0} {
+            set sel2_presence "yes"
+        }
+        append cur_atom_props " $sel1_presence $sel2_presence"
+        lappend atom_properties "\"$cur_atom_props\""   
     }
 
     set atom_beta_by_Rank [lsort -real -index 0 $atom_beta_by_Rank]    
