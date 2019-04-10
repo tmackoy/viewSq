@@ -311,6 +311,8 @@ proc ::SQGUI::get_partial_s_q {y_gofr contributions_file_path element_pair pair_
             append pline $pair_weight 
             puts $fp $pline
         }
+    } else {
+        set got_Error 1
     }
 
     for {set cur_q $min_q} {$cur_q <= $max_q} {set cur_q [expr {$cur_q + $delta_q}]} {
@@ -833,7 +835,7 @@ proc ::SQGUI::runSofQ {} {
     set total_distances_count [ladd $bin_totals]
 
     puts "Calculating total form factor weighted S(q)..."
-    computeAllPossiblePartials    
+    #computeAllPossiblePartials    
     ProcessAllsubGroupPairs
 
     set auto_call 0
@@ -843,6 +845,24 @@ proc ::SQGUI::runSofQ {} {
     set enableSelections 1
     EnDisable
     $w.foot configure -state disabled
+}
+
+proc ::SQGUI::testBinSummands {total_dist} {
+    global bin_totals
+    puts "total: $total_dist"
+
+    for {set i 0} {$i < [llength $bin_totals]} {incr i} {
+        set weight [expr double([lindex $bin_totals $i])/$total_dist]
+        set counts_bin [dict create]
+        dict append counts_bin $i [lindex $bin_totals $i]
+        set partial_gofr [get_partial_g_r $counts_bin $weight]
+        set y_partial_gofr [lindex $partial_gofr 1]
+        set partial_sofq [get_partial_s_q $y_partial_gofr "" "" $weight]  
+        set y_partial_sofq [lindex $partial_sofq 1] 
+        
+        puts "$counts_bin >>> $weight >>> $y_partial_sofq"
+    }
+
 }
 
 proc ::SQGUI::readElementsFile {} {
@@ -1048,8 +1068,6 @@ proc ::SQGUI::computeAllPossiblePartials {} {
         dict append cur_grp_pair_counts_dict $bin 2
         set partial_gofr_result_2 [get_partial_g_r $cur_grp_pair_counts_dict $pair_weight]
         set y_partial_gofr_2 [lindex $partial_gofr_result_2 1]
-
-        # puts "$y_partial_gofr"
         
         # Compute s(q) using g(r) for a bin with count 1
         set partial_sofq_result_1 [get_partial_s_q_with_contributions $y_partial_gofr_1 $pair_weight]
@@ -1112,7 +1130,7 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
     set write_to_file 0    
     set fp {}   
 
-    variable total_distances_count
+    variable all_distances_count
     variable auto_call
     variable input_file_path
 
@@ -1130,7 +1148,7 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
 
         set cur_bin_counts_dict [dict create]
         set cur_grp_pair_counts_dict {}
-        set pair_weight [expr double([lindex $bin_totals $bin_i]) / $total_distances_count]
+        set pair_weight [expr double([lindex $bin_totals $bin_i]) / $all_distances_count]
 
         # Compute g(r) for current bin with count across all pairs              
         dict append cur_bin_counts_dict $bin_i [lindex $bin_totals $bin_i]
@@ -1183,6 +1201,7 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
         set grp_pair "$group1_name $group2_name"
         set grp_pair_reverse "$group2_name $group1_name"
         set counts [dict get $subGroupPair_counts $subgrp_pair]
+        puts "grp_pair: $grp_pair"
         
         if { [dict exists $allPairsAggregated_counts $grp_pair] ==1 } then {
             dict lappend allPairsAggregated_counts $grp_pair $counts    
@@ -1235,7 +1254,8 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
         foreach bin_i [dict keys $cur_atom_counts_dict] {            
             set cur_bin_neighbour_counts [dict get $cur_atom_counts_dict $bin_i]
 
-            set contribution_for_cur_bin [lindex [lindex $possible_sq_contribution_differences $bin_i] 0]        
+            #set contribution_for_cur_bin [lindex [lindex $possible_sq_contribution_differences $bin_i] 0]      
+            set contribution_for_cur_bin [dict get $unit_sofqs $bin_i]  
             foreach neighbour [dict keys $cur_bin_neighbour_counts] {    
                 set neighbour_contribution_for_cur_bin {}              
                 foreach cur_unit_sofq $contribution_for_cur_bin {
@@ -1314,7 +1334,7 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
         }
 
         # Get the weight of the current element group pair
-        set pair_weight [expr double($cur_grp_pair_counts_sum) / $total_distances_count]
+        set pair_weight [expr double($cur_grp_pair_counts_sum) / $all_distances_count]
         dict set allPairsAggregated_weights $grp_pair $pair_weight
 
         set grps [split $grp_pair " "]      
@@ -1389,11 +1409,14 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
     set counter 1
     set grp_pairs_count [llength [dict keys $counts_dict]]
     
+    puts "normal: $weights_dict"
+    puts "all-all: $selection_groups_weights_all_denominator"
     foreach grp_pair [dict keys $counts_dict] {      
         # Compute g(r) for current element group pair
         set cur_grp_pair_counts_dict [dict get $counts_dict $grp_pair]
         set pair_weight [dict get $weights_dict $grp_pair]
-        set partial_gofr_result [get_partial_g_r $cur_grp_pair_counts_dict $pair_weight]
+        set pair_weight_all_denominator [dict get $selection_groups_weights_all_denominator $grp_pair]
+        set partial_gofr_result [get_partial_g_r $cur_grp_pair_counts_dict $pair_weight_all_denominator]
 
         set x_partial_gofr [lindex $partial_gofr_result 0]
         set y_partial_gofr [lindex $partial_gofr_result 1]
@@ -1402,7 +1425,7 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
         dict append group_pair_g_r $grp_pair $y_partial_gofr
         set weighted_y_partial_gofr {}
         for {set k 0} {$k < [llength $y_partial_gofr]} {incr k} {
-            lappend weighted_y_partial_gofr [expr [lindex $y_partial_gofr $k] * $pair_weight]
+            lappend weighted_y_partial_gofr [expr [lindex $y_partial_gofr $k] * $pair_weight_all_denominator]
         }
         if { [llength $y_partial_gofr_sum] == 0 } then {
             set y_partial_gofr_sum $weighted_y_partial_gofr
@@ -1414,11 +1437,11 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
         dict append weighted_group_pair_g_r $grp_pair $weighted_y_partial_gofr
 
         # Compute s(q) for current element group pair
-        set partial_sofq_result [get_partial_s_q $y_partial_gofr $unweighted_contributions_file $grp_pair $pair_weight]
+        set partial_sofq_result [get_partial_s_q $y_partial_gofr $unweighted_contributions_file $grp_pair $pair_weight_all_denominator]
         set x_partial_sofq [lindex $partial_sofq_result 0]
         set y_partial_sofq [lindex $partial_sofq_result 1] 
         set rbin_contributions [lindex $partial_sofq_result 2]
-
+        
         dict append group_pair_s_q $grp_pair $y_partial_sofq
 
         if { [llength $y_partial_sofq_sum] == 0 } then {
@@ -1448,7 +1471,6 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
         set cur_pair_formfactor_list [split [lindex $cur_pair_formfactor 0] " "]       
 
         # Calculate partuial g(r) using all-case weights for form-factor weighted S(q)
-        set pair_weight_all_denominator [dict get $selection_groups_weights_all_denominator $grp_pair]
         set partial_gofr_result_all [get_partial_g_r $cur_grp_pair_counts_dict $pair_weight_all_denominator]            
         set y_partial_gofr_all [lindex $partial_gofr_result_all 1]
 
@@ -2124,6 +2146,8 @@ proc ::SQGUI::computeSelections {} {
         
         computePartialsForSelections $selection_groups_counts $selection_groups_weights
         puts "Completed!"
+        #testBinSummands $all_distances_count
+
     }
 
     set enableStatistics 1
