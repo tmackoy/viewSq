@@ -1,10 +1,11 @@
+# All the packages used are from standard python3.
 import math
 import sys
 import os
 from collections import defaultdict
 import datetime as dt
 
-print("Start:",dt.datetime.now())
+#print("Start:",dt.datetime.now())
 output_file = 'GofRValues.txt'
 elements_file = 'elements.ndx'
 
@@ -44,6 +45,9 @@ inp_file_dir = os.path.dirname(inp_file)
 output_file = inp_file_dir + '//' + output_file
 elements_file = inp_file_dir + '//' + elements_file
 
+# Reading the elements.ndx file and store the contents in a dictionary.
+# elements_dict: Dictionary that stores element types as keys and atom numbers as values
+# sub_groups_dict: Dictionary that stores atom numbers as keys and element types as values
 if os.path.isfile(elements_file):
     with open(elements_file, mode='r') as inp_eles:
         key = ''
@@ -72,10 +76,12 @@ if os.path.isfile(elements_file):
 else:
     print("No elements file!")
 
+# Initialize histogram and rdf arrays with 0.
 for i in range(0, bins_count):
     histogram.append(0)
     rdf.append(0)
 
+# Reads the GofRValues.txt file that contains the results from the frames processed so far.
 if not is_first_frame:
     gofr_values_read = False
     start_groupPairs = False
@@ -108,7 +114,9 @@ if not is_first_frame:
                 else:
                     bin_val = line[:-1].split(":")
                     prev_group_pairs_bins[cur_group_pair][bin_val[0]]=bin_val[1]
+# Finished reading the file.
 
+# Read input file that contains the atom coordinates for the current frame.
 with open(inp_file, mode='r') as in_file_data:
     atom_data_line = in_file_data.readline()[:-1]
     while atom_data_line and atom_data_line != '*****':
@@ -118,6 +126,7 @@ with open(inp_file, mode='r') as in_file_data:
              float(cols[5].strip())])
         atom_data_line = in_file_data.readline()[:-1]
 
+# intialize the dictionary (atom_paticipation_in_bins) that stores atom numbers as keys and list of counts at all possible bins as values.
 for atom in atoms:
     key = atom[0]
     atom_paticipation_in_bins[key] = []
@@ -129,9 +138,12 @@ box_lenx = max(x[3] for x in atoms) - min(x[3] for x in atoms)
 box_leny = max(y[4] for y in atoms) - min(y[4] for y in atoms)
 box_lenz = max(z[5] for z in atoms) - min(z[5] for z in atoms)
 
+# Ported from the C++ version written by Travis.
 total_pairs = 0
 for i in range(0, len(atoms)):
     for j in range(i+1, len(atoms)):
+	
+		# Calculate the minimum distance between current pair of atoms.
         dr_x = atoms[i][3] - atoms[j][3]
         dr_y = atoms[i][4] - atoms[j][4]
         dr_z = atoms[i][5] - atoms[j][5]
@@ -154,34 +166,54 @@ for i in range(0, len(atoms)):
         distance_ij = math.sqrt(dr_x * dr_x + dr_y * dr_y + dr_z * dr_z)
         total_pairs += 1
 
+		# Check if the minimum distance between current pair of atoms is with in maxR.
         if distance_ij <= maxR:
+			# calculate the bin number for the distance.
             cur_bin = int(distance_ij / deltaR)
             if cur_bin < bins_count:
+			
+				# add a count of 2 in the histogram at the calculated bin index.
+				# part 1 of GofRValues.txt file
                 histogram[cur_bin] += 2
+				
+				# add a count of 2 at the calculated bin index for the current atom counts dictionary.
+				# part 2 of GofRValues.txt file
                 atom_paticipation_in_bins[atoms[i][0]][cur_bin] += 2
+				
+				# part 3 of GofRValues.txt file
                 atom_i = int(atoms[i][0])
                 atom_j = int(atoms[j][0])
-                # if atom_i not in sub_groups_dict:
-                #     print("i:",atom_i) 
-                # if atom_j not in sub_groups_dict:
-                #     print("j:",atom_j)
                 atom_i_subgroup = sub_groups_dict[atom_i]
                 atom_j_subgroup = sub_groups_dict[atom_j]
+				# create the current atom pair key and the reverse key.
                 sub_group_pair_key = atom_i_subgroup + ' ' + atom_j_subgroup
                 sub_group_pair_key_reverse = atom_j_subgroup + ' ' + atom_i_subgroup
+				
+                # add a count of 2 at the calculated bin index for the current atom pair counts dictionary.
+				# check if either normal key or reverse key exists in the dictionary.
+				# If either keys exists append the counts to that key.
+				# otherwise, create a new key and add the counts to it.
                 if sub_group_pair_key_reverse not in atom_participation_in_groups.keys():
                     atom_participation_in_groups[sub_group_pair_key][cur_bin] += 2
-                else:
+				else:
                     atom_participation_in_groups[sub_group_pair_key_reverse][cur_bin] += 2
+# all the calculations for the current frame are done.
 
+# Output all the results from the calculations to GofRValues.txt file.
 with open(output_file, mode='w') as out_file:
     total_count = []
+	# If first frame, write the current counts to file directly.
+	# otherwise, add the current counts to the counts read until previous frame and then write the cummulative sum to the file.
+	
+	# histogram counts (Part 1)
     for i in range(0, bins_count):
         if is_first_frame:
             out_file.write(str(histogram[i]) + '\n')
         else:
             out_file.write(str(histogram[i] + int(prev_gofr_values[i])) + '\n')
         total_count.append(0)
+		
+	# Box lengths
     if is_first_frame:
         out_file.write("BOX:" + str(box_lenx) + "," + str(box_leny) + ',' + str(box_lenz) + '\n*****\n')
     else:
@@ -189,6 +221,7 @@ with open(output_file, mode='w') as out_file:
             box_leny + float(running_bbox_lengths[1])) + ',' + str(
             box_lenz + float(running_bbox_lengths[2])) + '\n*****\n')
 
+	# atom counts across bins (Part 2)
     for atom, bins in atom_paticipation_in_bins.items():
         atomcnt = 0
         i = 0
@@ -212,6 +245,7 @@ with open(output_file, mode='w') as out_file:
     else:
         out_file.write("*****\n")
 
+	# atom pair counts across bins (Part 3)
     for grp_pair, atombins in atom_participation_in_groups.items():
         out_file.write(grp_pair + "\n")
         i = 0
@@ -225,4 +259,4 @@ with open(output_file, mode='w') as out_file:
             out_line += str(str(bin) + ":" + str(value)) + ","
         out_file.write(out_line[:-1] + "\n")
 
-print("End:",dt.datetime.now())
+#print("End:",dt.datetime.now())
