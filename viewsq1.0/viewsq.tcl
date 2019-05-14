@@ -570,6 +570,80 @@ proc ::SQGUI::get_formfactor_weighted_partial_s_q {y_gofr weight pair_formfactor
     return [list $sqx $sqy $rbin_contributions_to_ff_S_q]
 }
 
+proc ::SQGUI::get_formfactor_weighted_partial_s_q_with_contributions {y_gofr weight pair_formfactor_list } {
+    global all_same_elements_weights
+    global all_same_group_pair_formfactors
+
+    set tcl_precision 12
+    variable delta
+    variable rmax
+    variable pi
+    variable min_q
+    variable max_q
+    variable delta_q
+    variable density
+
+    set numbins [expr $rmax / $delta]
+    set maxIdx 0
+    set got_Error 0
+    set fp {}
+    set pos_neg_lines {}
+    set i_idx 0
+    set rbin_contributions_to_ff_S_q {}
+    set adjusted_max_q [expr $max_q + [expr $delta_q / 100]]
+
+    for {set cur_q $min_q} {$cur_q <= $max_q} {set cur_q [expr {$cur_q + $delta_q}]} {
+        set maxIdx $cur_q   
+        set varx $cur_q
+        set vary 0.0
+        set rbin_contributions {} 
+        set pos_contribution 0
+        set neg_contribution 0
+        set formfactor [lindex $pair_formfactor_list $i_idx]
+        set denominator_at_q 0
+        # calculate the denoinator as weighted sum of formfactors for homogenous element pairs.
+        for {set k 0} {$k < [llength $all_same_elements_weights]} {incr k} {
+            set pair_weight [lindex $all_same_elements_weights $k]
+            set pair_formfactor [lindex $all_same_group_pair_formfactors $k]
+            set element_weight [expr { sqrt($pair_weight) }]
+            set pair_formfactor_at_q [lindex $pair_formfactor $i_idx]
+            set element_formfactor_at_q [expr { sqrt($pair_formfactor_at_q) }]
+            set denominator_at_q [expr $denominator_at_q + [expr $element_weight * $element_formfactor_at_q]]
+        }
+
+        set denominator_at_q [expr $denominator_at_q * $denominator_at_q]
+
+        # At each q, calculate S(q) as running sum of product of r calcuation, pair weight, formfactor and divide by the calculated denominator.
+        for {set r 0} {$r < $numbins} {incr r} {
+            set glist_item [lindex $y_gofr $r]
+            set sin_expr [expr $varx * $r * $delta]         
+            set sin_val [expr sin($sin_expr) ]
+            set temp_expr [expr $glist_item - 1.0 ]
+            set temp_vary1 [expr $r * $delta * $temp_expr] 
+            set test_temp [expr $sin_val / $varx]
+            set temp_vary2 [expr $temp_vary1 * $test_temp]
+            set temp_vary2 [expr $temp_vary2 * 4 * $pi * $density * $delta]
+            set temp_vary2 [expr $temp_vary2 * $weight]
+            set temp_vary2 [expr $temp_vary2 * $formfactor]
+            set temp_vary2 [expr $temp_vary2 / $denominator_at_q]
+            set vary [expr $vary + $temp_vary2]
+            lappend rbin_contributions $temp_vary2
+            if {$temp_vary2>=0} {
+            set pos_contribution [expr $pos_contribution + $temp_vary2]
+            } else {
+            set neg_contribution [expr $neg_contribution + $temp_vary2]
+            }
+        }
+    
+        lappend rbin_contributions_to_ff_S_q $rbin_contributions
+        lappend sqx $varx
+        lappend sqy $vary
+        incr i_idx
+    }
+
+    return [list $sqx $sqy $rbin_contributions_to_ff_S_q]
+}
+
 proc ::SQGUI::convertListToDict {valuesList} {
     variable delta
     variable rmax
@@ -1131,6 +1205,7 @@ proc ::SQGUI::computeAllPossiblePartials {} {
 }
 
 proc ::SQGUI::ProcessAllsubGroupPairs {} {
+    global groups_atomNos
     global bin_totals
     global subGroupPair_counts
     global allPairsAggregated_counts
@@ -1149,9 +1224,11 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
     set all_same_elements_weights {}
     set all_same_group_pair_formfactors {}
     set all_atoms_counts [dict create]
+    set all_atoms_counts_by_group [dict create]
     set all_atom_contributions [dict create] 
     set selection_groups_weights_all_denominator [dict create]
     set unit_sofqs [dict create]
+    set unit_sofqs_ff [dict create]
     set write_to_file 0    
     set fp {}   
 
@@ -1173,34 +1250,6 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
     } else {
         set write_to_file 1     
     }    
-    
-    # calculate unit S(q) - S(q) contribution from an atom if it has a count on 1 in one bin.
-    for {set bin_i 0} {$bin_i < [llength $bin_totals]} {incr bin_i} {
-
-        set cur_bin_counts_dict [dict create]
-        set cur_grp_pair_counts_dict {}
-        set pair_weight [expr double([lindex $bin_totals $bin_i]) / $all_distances_count]
-
-        # Compute g(r) for current bin with full count in the bin across all (i.e. all-all) pairs              
-        dict append cur_bin_counts_dict $bin_i [lindex $bin_totals $bin_i]
-        set partial_gofr_result [get_partial_g_r $cur_bin_counts_dict $pair_weight]
-        set y_partial_gofr [lindex $partial_gofr_result 1]
-        
-        # Compute s(q) using above g(r)
-        set partial_sofq_result [get_partial_s_q_with_contributions $y_partial_gofr $pair_weight]
-        set y_partial_sofq [lindex $partial_sofq_result 0] 
-        set s_q_pos_contributions [lindex $partial_sofq_result 1] 
-        set s_q_neg_contributions [lindex $partial_sofq_result 2] 
-
-        # Get the magnitude of S(q) at each q and divide it by total count to get S(q) per unit
-        if {[lindex $bin_totals $bin_i]>0} then {
-            set sofq_per_unit {}
-            foreach sofq $y_partial_sofq {
-                lappend sofq_per_unit [expr $sofq / [lindex $bin_totals $bin_i]]
-            }
-            dict append unit_sofqs $bin_i $sofq_per_unit
-        }
-    }
     
     # aggregate the individual atom pair counts in such a way that we have dictionary with 
     #   key: atom number
@@ -1235,7 +1284,6 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
         set grp_pair "$group1_name $group2_name"
         set grp_pair_reverse "$group2_name $group1_name"
         set counts [dict get $subGroupPair_counts $subgrp_pair]
-        puts "grp_pair: $grp_pair"
         
         if { [dict exists $allPairsAggregated_counts $grp_pair] ==1 } then {
             dict lappend allPairsAggregated_counts $grp_pair $counts    
@@ -1246,9 +1294,127 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
         }
 
         dict lappend all_atoms_counts $atom_i [list $atom_j $counts]
-        dict lappend all_atoms_counts $atom_j [list $atom_i $counts]    
+        dict lappend all_atoms_counts $atom_j [list $atom_i $counts]  
+        # dict lappend all_atoms_counts_by_group  
+    }
+
+    # aggregate the individual atom pair counts in such a way that we have dictionary with 
+    #   key: atom group pair
+    #   value: dictionary with 
+    #           key: bin number
+    #           value: ttoalcount in the bin for the atom group pair
+    foreach grp_pair [dict keys $allPairsAggregated_counts] {
+        set cur_grp_pair_counts_list [dict get $allPairsAggregated_counts $grp_pair]
+        set cur_grp_pair_counts_dict [dict create]
+        
+        # Aggregate the counts in each group by bin numbers
+        foreach item $cur_grp_pair_counts_list {
+            foreach key [dict keys $item] {
+                if {[dict exists $cur_grp_pair_counts_dict $key]} then {
+                    dict set cur_grp_pair_counts_dict $key [expr [dict get $cur_grp_pair_counts_dict $key] + [expr [dict get $item $key] ]]
+                } else {
+                    dict set cur_grp_pair_counts_dict $key [expr [dict get $item $key] ]
+                }
+            }
+        }   
+        
+        dict set allPairsAggregated_counts $grp_pair $cur_grp_pair_counts_dict
+
+        # calculate the sum of counts in each element group pair
+        set cur_grp_pair_counts_sum 0
+        foreach grp_bin [dict keys $cur_grp_pair_counts_dict] {
+            set cur_grp_pair_counts_sum [expr $cur_grp_pair_counts_sum + [dict get $cur_grp_pair_counts_dict $grp_bin]]
+        }
+
+        # Get the weight of the current element group pair
+        set pair_weight [expr double($cur_grp_pair_counts_sum) / $all_distances_count]
+        dict set allPairsAggregated_weights $grp_pair $pair_weight
+
+        set grps [split $grp_pair " "]      
+        if {[lindex $grps 0]==[lindex $grps 1]} {
+            lappend all_same_elements_weights $pair_weight
+
+            set cur_pair_formfactor [dict get $groupPair_formfactors $grp_pair]
+            set cur_pair_formfactor_list [split [lindex $cur_pair_formfactor 0] " "]
+            lappend all_same_group_pair_formfactors $cur_pair_formfactor_list
+        }       
+    }
+    set selection_groups_weights_all_denominator $allPairsAggregated_weights
+
+    
+    # calculate unit S(q) and unit ff weighted S(q) - S(q) and ff weighted S(q) contribution from an atom if it has a count on 1 in one bin.
+    for {set bin_i 0} {$bin_i < [llength $bin_totals]} {incr bin_i} {
+
+        set cur_bin_counts_dict [dict create]
+        set cur_bin_total 0
+        set pair_weight [expr double([lindex $bin_totals $bin_i]) / $all_distances_count]
+        
+        # Compute g(r) for current bin with full count in the bin across all (i.e. all-all) pairs              
+        dict append cur_bin_counts_dict $bin_i [lindex $bin_totals $bin_i]
+        set partial_gofr_result [get_partial_g_r $cur_bin_counts_dict $pair_weight]
+        set y_partial_gofr [lindex $partial_gofr_result 1]
+        
+        # Compute s(q) using above g(r)
+        set partial_sofq_result [get_partial_s_q_with_contributions $y_partial_gofr $pair_weight]
+
+        set y_partial_sofq [lindex $partial_sofq_result 0] 
+        set s_q_pos_contributions [lindex $partial_sofq_result 1] 
+        set s_q_neg_contributions [lindex $partial_sofq_result 2] 
+
+        # Get the magnitude of S(q) at each q and divide it by total count to get S(q) per unit
+        if {[lindex $bin_totals $bin_i]>0} then {
+            set sofq_per_unit {}
+            foreach sofq $y_partial_sofq {
+                lappend sofq_per_unit [expr $sofq / [lindex $bin_totals $bin_i]]
+            }
+            dict append unit_sofqs $bin_i $sofq_per_unit
+        }
+
+        foreach pair_key [dict keys $allPairsAggregated_counts] {
+            set cur_pair_totals [dict get $allPairsAggregated_counts $pair_key]
+            set cur_pair_bin_total 0
+            if {[dict exists $cur_pair_totals $bin_i]} then {
+                set cur_pair_bin_total [dict get $cur_pair_totals $bin_i]
+            }
+            set cur_pair_weight [expr double($cur_pair_bin_total) / $all_distances_count]
+
+            # Compute g(r) for current bin with full count in the bin across all (i.e. all-all) pairs              
+            dict append cur_bin_counts_dict $bin_i $cur_pair_bin_total
+            set partial_gofr_result [get_partial_g_r $cur_bin_counts_dict $cur_pair_weight]
+            set y_partial_gofr [lindex $partial_gofr_result 1]
+            
+            # Get the current group pair's formfactor values list
+            set cur_pair_formfactor [dict get $groupPair_formfactors $pair_key]
+            set cur_pair_formfactor_list [split [lindex $cur_pair_formfactor 0] " "]       
+
+            # Compute form factor weighted s(q) using above g(r)
+            set weighted_partial_sofq_result [get_formfactor_weighted_partial_s_q_with_contributions $y_partial_gofr $cur_pair_weight $cur_pair_formfactor_list]
+
+            set y_partial_sofq [lindex $partial_sofq_result 0] 
+            set s_q_pos_contributions [lindex $partial_sofq_result 1] 
+            set s_q_neg_contributions [lindex $partial_sofq_result 2] 
+
+            # Get the magnitude of S(q) at each q and divide it by total count to get S(q) per unit
+            if {[dict exists $cur_pair_totals $bin_i]} then {
+                set sofq_per_unit {}
+                foreach sofq $y_partial_sofq {
+                    lappend sofq_per_unit [expr $sofq / $cur_pair_bin_total]
+                }
+                if {[dict exists $unit_sofqs_ff $pair_key]} then {
+                    set bin_cintribs_so_far [dict get $unit_sofqs_ff $pair_key]
+                    dict append bin_cintribs_so_far $bin_i $sofq_per_unit
+                    dict set unit_sofqs_ff $pair_key $bin_cintribs_so_far
+                } else {
+                    dict append cur_bin_Sq $bin_i $sofq_per_unit
+                    dict append unit_sofqs_ff $pair_key $cur_bin_Sq 
+                }
+                
+            }
+        }
     }
     
+    puts "unit_sofqs_ff: $unit_sofqs_ff"
+
     set cur_atom_count_1 [dict create]
     set atoms_count [llength [dict keys $all_atoms_counts]]
     set counter 1
@@ -1360,44 +1526,6 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
         close $fp
     }
 
-    foreach grp_pair [dict keys $allPairsAggregated_counts] {
-        set cur_grp_pair_counts_list [dict get $allPairsAggregated_counts $grp_pair]
-        set cur_grp_pair_counts_dict [dict create]
-        
-        # Aggregate the counts in each group by bin numbers
-        foreach item $cur_grp_pair_counts_list {
-            foreach key [dict keys $item] {
-                if {[dict exists $cur_grp_pair_counts_dict $key]} then {
-                    dict set cur_grp_pair_counts_dict $key [expr [dict get $cur_grp_pair_counts_dict $key] + [expr [dict get $item $key] ]]
-                } else {
-                    dict set cur_grp_pair_counts_dict $key [expr [dict get $item $key] ]
-                }
-            }
-        }   
-        
-        dict set allPairsAggregated_counts $grp_pair $cur_grp_pair_counts_dict
-
-        # calculate the sum of counts in each element group pair
-        set cur_grp_pair_counts_sum 0
-        foreach grp_bin [dict keys $cur_grp_pair_counts_dict] {
-            set cur_grp_pair_counts_sum [expr $cur_grp_pair_counts_sum + [dict get $cur_grp_pair_counts_dict $grp_bin]]
-        }
-
-        # Get the weight of the current element group pair
-        set pair_weight [expr double($cur_grp_pair_counts_sum) / $all_distances_count]
-        dict set allPairsAggregated_weights $grp_pair $pair_weight
-
-        set grps [split $grp_pair " "]      
-        if {[lindex $grps 0]==[lindex $grps 1]} {
-            lappend all_same_elements_weights $pair_weight
-
-            set cur_pair_formfactor [dict get $groupPair_formfactors $grp_pair]
-            set cur_pair_formfactor_list [split [lindex $cur_pair_formfactor 0] " "]
-            lappend all_same_group_pair_formfactors $cur_pair_formfactor_list
-        }       
-    }
-
-    set selection_groups_weights_all_denominator $allPairsAggregated_weights
     set auto_call 0    
 }
 
