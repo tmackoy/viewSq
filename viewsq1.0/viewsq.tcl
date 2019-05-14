@@ -3300,7 +3300,7 @@ proc ::SQGUI::EnDisable {args} {
         $w.in2.topNOptionframe.dispmolecules configure -state disabled
         $w.in2.topNOptionframe.betaRank configure -state disabled
         $w.in2.topNOptionframe.betaScore configure -state disabled
-        $w.in2.topNframe.showVis configure -state disabled
+        # $w.in2.topNframe.showVis configure -state disabled
 
     } else {
         $w.in1.computeRanks configure -state normal
@@ -3316,7 +3316,7 @@ proc ::SQGUI::EnDisable {args} {
         $w.in2.topNOptionframe.dispmolecules configure -state disabled
         $w.in2.topNOptionframe.betaRank configure -state disabled
         $w.in2.topNOptionframe.betaScore configure -state disabled
-        $w.in2.topNframe.showVis configure -state disabled
+        # $w.in2.topNframe.showVis configure -state disabled
 
         $w.in2.topNOptionframe.at1 configure -state disabled
         $w.in2.topNOptionframe.a_cb1 configure -state disabled
@@ -3354,7 +3354,7 @@ proc ::SQGUI::EnDisable {args} {
         $w.in2.topNOptionframe.dispmolecules configure -state normal
         $w.in2.topNOptionframe.betaRank configure -state normal
         $w.in2.topNOptionframe.betaScore configure -state normal
-        $w.in2.topNframe.showVis configure -state normal
+        # $w.in2.topNframe.showVis configure -state normal
 
         $w.in2.topNOptionframe.at1 configure -state normal
         $w.in2.topNOptionframe.a_cb1 configure -state normal
