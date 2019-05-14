@@ -36,7 +36,7 @@ namespace eval ::SQGUI:: {
     variable density       0.0;     # total density
     variable density_normalized 0.0;# Normalized total density
     variable all_distances_count 0; #Sum of distance counts across all element pairs
-    variable total_distances_count 0;#Sum of distance counts across all element pairs in selections
+    variable total_distances_count 0;#Sum of distance counts across all element pairs in the selections
 
     variable leftBin       "";      # bin represent left of peak of interest
     variable rightBin      "";      # bin represent right of peak of interest
@@ -136,6 +136,7 @@ package provide sqgui $SQGUI::version
 #################
 proc ::SQGUI::ladd {l} {::tcl::mathop::+ {*}$l}
 
+# Ported to TCL using the original C++ code developed by Travis.
 proc ::SQGUI::get_g_r {temp_y} {
     variable delta
     variable rmax
@@ -219,6 +220,7 @@ proc ::SQGUI::get_s_q {y_gofr contributions_file_path} {
         }
     }
 
+    # Loops over all qs and calculate S(q).
     for {set cur_q $min_q} {$cur_q <= $max_q} {set cur_q [expr {$cur_q + $delta_q}]} {
         set maxIdx $cur_q   
         set varx $cur_q
@@ -227,6 +229,7 @@ proc ::SQGUI::get_s_q {y_gofr contributions_file_path} {
         set pos_contribution 0
         set neg_contribution 0
 
+        # Loops over all rs and calculate S(q) for current q.
         for {set r 0} {$r < $numbins} {incr r} {
             set glist_item [lindex $y_gofr $r]
             set sin_expr [expr $varx * $r * $delta]         
@@ -238,12 +241,15 @@ proc ::SQGUI::get_s_q {y_gofr contributions_file_path} {
             set temp_vary2 [expr $temp_vary2 * 4 * $pi * $density * $delta]
             set vary [expr $vary + $temp_vary2]
             lappend rbin_contributions $temp_vary2
+
+            # cummulative sum of positive and negative contributions to S(q) for current r.
             if {$temp_vary2>=0} {
                 set pos_contribution [expr $pos_contribution + $temp_vary2]
             } else {
                 set neg_contribution [expr $neg_contribution + $temp_vary2]
             }
         }
+        # Map that holds positive and negative contribution of S(q) at current q. 
         dict append total_S_q_pos_contributions $varx $pos_contribution 
         dict append total_S_q_neg_contributions $varx $neg_contribution 
 
@@ -482,6 +488,7 @@ proc ::SQGUI::get_formfactor_weighted_partial_s_q {y_gofr weight pair_formfactor
         set neg_contribution 0
         set formfactor [lindex $pair_formfactor_list $i_idx]
         set denominator_at_q 0
+        # calculate the denoinator as weighted sum of formfactors for homogenous element pairs.
         for {set k 0} {$k < [llength $all_same_elements_weights]} {incr k} {
             set pair_weight [lindex $all_same_elements_weights $k]
             set pair_formfactor [lindex $all_same_group_pair_formfactors $k]
@@ -493,6 +500,7 @@ proc ::SQGUI::get_formfactor_weighted_partial_s_q {y_gofr weight pair_formfactor
 
         set denominator_at_q [expr $denominator_at_q * $denominator_at_q]
 
+        # At each q, calculate S(q) as running sum of product of r calcuation, pair weight, formfactor and divide by the calculated denominator.
         for {set r 0} {$r < $numbins} {incr r} {
             set glist_item [lindex $y_gofr $r]
             set sin_expr [expr $varx * $r * $delta]         
@@ -514,6 +522,7 @@ proc ::SQGUI::get_formfactor_weighted_partial_s_q {y_gofr weight pair_formfactor
             }
         }
 
+        # Also keep track of positive and negative contributions to form factored weighted S(q).
         if {[dict exists $selection_weighted_S_q_pos_contributions $varx]==1} then {
             dict set selection_weighted_S_q_pos_contributions $varx [expr $pos_contribution + [dict get $selection_weighted_S_q_pos_contributions $varx]]
         } else {
@@ -690,6 +699,7 @@ proc ::SQGUI::runSofQ {} {
         }
     }  
 
+    # File that contains histogram counts across all frames.
     set filename $input_file_path
     append filename "GofRValues.txt"
 
@@ -699,6 +709,7 @@ proc ::SQGUI::runSofQ {} {
 
     set numbins [expr $rmax / $delta]
 
+    # Read only the lines corresponding to histogram counts.
     foreach {line} $data {
         set firstWord [string range $line 0 2]
         if {$firstWord=="BOX"} {        
@@ -717,9 +728,14 @@ proc ::SQGUI::runSofQ {} {
     set density_normalized [expr [expr 4 * $pi * $density] / 3]
 
     set gofr_result [get_g_r $y_gofr_temp]
+
+    # get_g_r method return a list of lists where index 
+    #       0- list of x values
+    #       1- list of y values
     set x_gofr [lindex $gofr_result 0]
     set y_gofr [lindex $gofr_result 1]
 
+    # show the plot of g(r) calculation.
     if {$cannotplot} then {
         tk_dialog .errmsg {viewSq Error} "Multiplot is not available." error 0 Dismiss
     } else {
@@ -734,18 +750,24 @@ proc ::SQGUI::runSofQ {} {
     set dq [expr $qmax / $numbins]  
     puts "Calculating total S(q)..."
     set sofq_result [get_s_q $y_gofr $total_S_q_contributions_file]
+     # get_s_q method return a list of lists where index 
+    #       0- list of qs in S(q)
+    #       1- list of S(q) values
     set sqx [lindex $sofq_result 0]
     set sqy [lindex $sofq_result 1]
     set maxIdx [lindex $sofq_result 2]
 
+    # show the plot of S(q), positive and negative components of S(q), sum of absolute components of S(q).
     if {$cannotplot} then {
         tk_dialog .errmsg {viewSq Error} "Multiplot is not available." error 0 Dismiss
     } else {
         set tmp 4
-        #-vline {$tmp -width 2 -fill blue} 
+        # Total S(q) plot
         set SQ_plot [multiplot -x $sqx -y $sqy -title "S(q) plot (all-all)" -lines -linewidth 2 -marker point -legend "S(q)" -plot ]
         set total_S_q_pos_contributions_y [dict values $total_S_q_pos_contributions]
         set total_S_q_neg_contributions_y [dict values $total_S_q_neg_contributions]
+
+        # Positive and negative components of S(q) plot
         set SQ_plot_pos_neg_contributions [multiplot -x $sqx -y $total_S_q_pos_contributions_y -title "Positive and negative contributions for total S(q) plot (all-all)" \
                                                 -lines -linewidth 2 -marker point -linecolor green -fillcolor black -legend "Positive Contribution"]
         $SQ_plot_pos_neg_contributions add $sqx $total_S_q_neg_contributions_y -lines -linewidth 2 -marker point -linecolor red -fillcolor black -legend "Negative Contribution" -plot
@@ -756,10 +778,15 @@ proc ::SQGUI::runSofQ {} {
             lset S_q_pos_abs_neg_contributions $k_idx [expr abs($neg_value) + [lindex $S_q_pos_abs_neg_contributions $k_idx] ]
             incr k_idx
         }
+
+        # Sum of absolute components of S(q) plot.
         set SQ_plot_pos_abs_neg_contributions [multiplot -x $sqx -y $S_q_pos_abs_neg_contributions -title "Sum of positive and magnitude of negative contributions for total S(q) plot (all-all)" -lines -linewidth 2 -marker point -plot ]
     }
 
+    # Disable the Compute S(q) button to stop calling runSofQ() again!
     $w.foot configure -state disabled
+
+    # Read the elements.ndx file and keep the contents in a dictionary.
     set readStatus [readElementsFile]
     if {$readStatus!=0} then {
         return
@@ -835,8 +862,7 @@ proc ::SQGUI::runSofQ {} {
 
     set total_distances_count [ladd $bin_totals]
 
-    puts "Calculating total form factor weighted S(q)..."
-    #computeAllPossiblePartials    
+    puts "Calculating total form factor weighted S(q)..."    
     ProcessAllsubGroupPairs
 
     set auto_call 0
@@ -863,7 +889,6 @@ proc ::SQGUI::testBinSummands {total_dist} {
         
         puts "$counts_bin >>> $weight >>> $y_partial_sofq"
     }
-
 }
 
 proc ::SQGUI::readElementsFile {} {
@@ -882,7 +907,6 @@ proc ::SQGUI::readElementsFile {} {
 
     set fp {}
 
-    # 1. Reading atomic form factors file
     set formfactorsfilepath $vmd_Path
     if {$useXRay==1} then {
         append formfactorsfilepath "/plugins/noarch/tcl/viewsq1.0/form_factors_xray.csv"    
@@ -890,6 +914,7 @@ proc ::SQGUI::readElementsFile {} {
         append formfactorsfilepath "/plugins/noarch/tcl/viewsq1.0/form_factors_neutron.csv"
     }
     
+    # 1. Reading atomic form factors file
     set form_factor_constants [dict create]
     if {[catch {open $formfactorsfilepath r} fp]} then {
         tk_dialog .errmsg {viewSq Error} "There was an error opening the file '$formfactorsfilepath':\n\n$fp" error 0 Dismiss
@@ -949,7 +974,6 @@ proc ::SQGUI::readElementsFile {} {
                     dict lappend groups_atomNos $cur_group $cur_group_atoms
                     foreach atomNo $cur_group_atoms {
                         dict append atoms_groupNames $atomNo $cur_group
-                    # puts "*$atomNo* *$cur_group*"
                     }
 
                     # if using x-ray file, fetch the constants of the correpsonding element and calculate atomic form factor
@@ -1137,6 +1161,11 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
 
     set neighbour_contributions_file $input_file_path
     set write_to_file 0
+
+    # Create a file that stores S(q) contributions of an atom from each of the neighbours.
+    # Format:
+    #   Each line represents contributions from all neighbours with one atom.
+    #   Atom_number {neighbour_atom_number_1 {List of S(q) contributions} neighbour_atom_number_2 {List of S(q) contributions} neighbour_atom_number_3 {List of S(q) contributions}...}
     append neighbour_contributions_file "neighbour_contributions_sq.dat"
     if {[catch {open $neighbour_contributions_file w} fp]} then {
         set got_Error 1
@@ -1145,13 +1174,14 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
         set write_to_file 1     
     }    
     
+    # calculate unit S(q) - S(q) contribution from an atom if it has a count on 1 in one bin.
     for {set bin_i 0} {$bin_i < [llength $bin_totals]} {incr bin_i} {
 
         set cur_bin_counts_dict [dict create]
         set cur_grp_pair_counts_dict {}
         set pair_weight [expr double([lindex $bin_totals $bin_i]) / $all_distances_count]
 
-        # Compute g(r) for current bin with count across all pairs              
+        # Compute g(r) for current bin with full count in the bin across all (i.e. all-all) pairs              
         dict append cur_bin_counts_dict $bin_i [lindex $bin_totals $bin_i]
         set partial_gofr_result [get_partial_g_r $cur_bin_counts_dict $pair_weight]
         set y_partial_gofr [lindex $partial_gofr_result 1]
@@ -1172,6 +1202,9 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
         }
     }
     
+    # aggregate the individual atom pair counts in such a way that we have dictionary with 
+    #   key: atom number
+    #   value: list of all counts the atom has with different neighbours [[neighbour1 bin:count] [neighbour2 bin:count] [neighbour3 bin:count]...]
     foreach subgrp_pair [dict keys $subGroupPair_counts] {
 
         set subGroups [split $subgrp_pair " "]
@@ -1219,6 +1252,19 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
     set cur_atom_count_1 [dict create]
     set atoms_count [llength [dict keys $all_atoms_counts]]
     set counter 1
+
+    # Loop through all_atoms_counts dictionary and aggregate the counts as follows
+    #   key: atom number
+    #   value: dictionary of counts in each bin with all the neighbours.
+    #       i.e. dictionary with 
+    #               key: bin number
+    #               value: list of pairs of neighbour atom number and count with the neighbour in this bin
+    #               {
+    #                   bin1: [(neighbour1 count) (neighbour2 count)..]
+    #                   bin2: [(neighbour2 count) (neighbour4 count)..]
+    #                   bin3: [(neighbour3 count) (neighbour1 count)..]
+    #                   ...
+    #               }
     foreach atom [dict keys $all_atoms_counts] {
         set cur_atom_counts_list [dict get $all_atoms_counts $atom]
         set cur_atom_counts_dict [dict create]
@@ -1246,6 +1292,8 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
                 dict set cur_atom_count_1 $key 1
             }
         }
+
+        # Clear the all_atoms_counts dictionary for the atom that is already processed.
         dict set all_atoms_counts $atom 0        
         set sqy {}
         set sqy_pos {}
@@ -1255,14 +1303,15 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
         foreach bin_i [dict keys $cur_atom_counts_dict] {            
             set cur_bin_neighbour_counts [dict get $cur_atom_counts_dict $bin_i]
 
-            #set contribution_for_cur_bin [lindex [lindex $possible_sq_contribution_differences $bin_i] 0]      
             set contribution_for_cur_bin [dict get $unit_sofqs $bin_i]  
-            foreach neighbour [dict keys $cur_bin_neighbour_counts] {    
+            foreach neighbour [dict keys $cur_bin_neighbour_counts] {   
+                # Calculate the current neighbour contribution using its count and unit S(q).  
                 set neighbour_contribution_for_cur_bin {}              
                 foreach cur_unit_sofq $contribution_for_cur_bin {
                     lappend neighbour_contribution_for_cur_bin [expr [dict get $cur_bin_neighbour_counts $neighbour] * $cur_unit_sofq]
                 }
 
+                # keep the running total contribution of an atom from its neighbours contributions.
                 if {[dict exists $cur_atom_neighbours_contributions $neighbour]} then {
                     set neighbour_existing_contribution [dict get $cur_atom_neighbours_contributions $neighbour]
                     for {set q 0} {$q < [llength $neighbour_existing_contribution]} {incr q} {
@@ -1275,7 +1324,7 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
             }
         }
         
-
+        # write the neighbours contributions to the current atom to the file.
         if {$write_to_file == 1} then {
             # puts "writing to file..."
             set atom_contribution {}
@@ -1300,7 +1349,7 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
         }
         dict set all_atom_contributions $atom [list $atom_contribution {} {}]
 
-        if {[expr $counter%1000]==0} {
+        if {[expr $counter%100]==0} {
             puts "$counter out of $atoms_count atoms processed."
         }
         incr counter
@@ -1352,6 +1401,19 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
     set auto_call 0    
 }
 
+# Counts Dictionary format:
+#   {
+#       type1-type1: [bin:count bin:count]
+#       type1-type2: [bin:count bin:count]
+#       type2-type2: [bin:count bin:count]
+#   }
+#
+# Weights Dictionary format:
+#   {
+#       type1-type1: weight
+#       type1-type2: weight
+#       type2-type2: weight
+#   }
 proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
 
     global groupPair_formfactors
@@ -1512,6 +1574,9 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
         tk_dialog .errmsg {viewSq Error} "Multiplot is not available." error 0 Dismiss
     } else { 
         set addToTitle ""
+        # If auto_call is
+        #   True: the call came from selections and we have to plot all the graphs.
+        #   False: the call came from "Compute S(q)" and plot only ff weighted S(q) plot.
         if {$auto_call} then {
             set addToTitle "for the selection "
             # plot total g(r) for the selections
@@ -2041,7 +2106,7 @@ proc ::SQGUI::computeSelections {} {
                 }
             }
 
-            if {[expr $counter%1000]==0} {
+            if {[expr $counter%100]==0} {
                 puts "$counter out of $atoms_sel1 atoms in selection 1 processed."
             }
             incr counter
@@ -2986,9 +3051,12 @@ proc ::SQGUI::sqgui {args} {
     grid columnconfigure $i 4 -weight 2
     grid columnconfigure $i 5 -weight 1
     grid columnconfigure $i 6 -weight 2
-
+    
+    #################
+    # subdivide and layout the q range of interest frame
     set i $w.in1
     label $i.al -text "Left q bin:" 
+    # define a slider using scale
     scale $i.at -orient horizontal -length 100 -sliderlength 30 -variable ::SQGUI::leftBin 
     label $i.bl -text "Right q bin:"
     scale $i.bt -orient horizontal -length 100 -sliderlength 30 -variable ::SQGUI::rightBin
@@ -3002,6 +3070,8 @@ proc ::SQGUI::sqgui {args} {
     grid columnconfigure $i 4 -weight 1    
     grid columnconfigure $i 5 -weight 2
 
+    #################
+    # subdivide and layout the visualization settings frame
     #bins frame
     frame $w.in2.topNframe
     frame $w.in2.topNOptionframe
@@ -3017,7 +3087,6 @@ proc ::SQGUI::sqgui {args} {
     label $i.bl -text "Atoms in selection:" 
     scale $i.bt -orient horizontal -length 120 -sliderlength 30  -resolution 1 -variable ::SQGUI::atomsAll
     label $i.temp2 -text "  "
-    button $i.showVis -text {Update Visualization} -command [namespace code UpdateRenderer]
     grid $i.al $i.at $i.bl $i.bt $i.temp2  -row 0 -sticky snew 
     
     grid columnconfigure $i 0 -weight 2
@@ -3177,14 +3246,18 @@ proc ::SQGUI::sqgui {args} {
     grid columnconfigure $i 8 -weight 2
     grid columnconfigure $i 9 -weight 2
 
+    # call update molecule file list method
     UpdateMolfile
+    # call enable or disable UI controls method
     EnDisable
+
+    # Thought to be required by VMD based on other plug-in implementations.
     global vmd_molecule
     trace variable vmd_molecule w ::SQGUI::UpdateMolfile
     trace variable ::SQGUI::molid w ::SQGUI::EnDisable
 }
 
-# en-/disable buttons that depend on a proper molecule being selected
+# enable/disable buttons that depend on a proper molecule being selected
 proc ::SQGUI::EnDisable {args} {
     variable molid
     variable w
@@ -3192,12 +3265,14 @@ proc ::SQGUI::EnDisable {args} {
     variable enableSelections
     variable enableRankings
 
+    # If not valid mol file selected disable the calculate S(q) button.
     if {$molid < 0 } {
         $w.foot configure -state disabled
     } else {
         $w.foot configure -state normal
     }
 
+    # If S(q) calculations are done, we enable the selections text boxes for further processing.
     if {$enableSelections==0} {
         $w.sel.computeSel configure -state disabled
         $w.sel.at configure -state disabled
@@ -3214,6 +3289,7 @@ proc ::SQGUI::EnDisable {args} {
         $w.sel.ct1 configure -state normal
     }
 
+    # If compute selections is done, we enable the UI controls corresponding to q range sliders.
     if {$enableStatistics == 0} {
         $w.in1.computeRanks configure -state disabled
         $w.in1.at configure -state disabled
@@ -3232,6 +3308,7 @@ proc ::SQGUI::EnDisable {args} {
         $w.in1.bt configure -state normal       
     }
 
+    # If compute ranking is done, we enable the UI controls corresponding to visualization settings.
     if {$enableRankings ==0} {
         $w.in2.topNframe.at configure -state disabled
         $w.in2.topNframe.bt configure -state disabled
@@ -3324,6 +3401,7 @@ proc ::SQGUI::UpdateMolfile {args} {
     $w.in.molid.m.menu delete 0 end
     set moltxt "(none)"
 
+    # loops through opened molecule files in VMD and add them to the menubutton created to show the list.
     if { [llength $mollist] > 0 } {
         $w.in.molid.m configure -state normal 
         foreach id $mollist {
