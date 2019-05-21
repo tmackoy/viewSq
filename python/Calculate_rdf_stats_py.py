@@ -195,7 +195,7 @@ for i in range(0, len(atoms)):
 				# otherwise, create a new key and add the counts to it.
                 if sub_group_pair_key_reverse not in atom_participation_in_groups.keys():
                     atom_participation_in_groups[sub_group_pair_key][cur_bin] += 2
-				else:
+                else:
                     atom_participation_in_groups[sub_group_pair_key_reverse][cur_bin] += 2
 # all the calculations for the current frame are done.
 
