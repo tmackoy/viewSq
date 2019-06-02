@@ -950,22 +950,22 @@ proc ::SQGUI::runSofQ {} {
     $w.foot configure -state disabled
 }
 
-proc ::SQGUI::testBinSummands {total_dist} {
-    global bin_totals
-    puts "total: $total_dist"
+# proc ::SQGUI::testBinSummands {total_dist} {
+#     global bin_totals
+#     puts "total: $total_dist"
 
-    for {set i 0} {$i < [llength $bin_totals]} {incr i} {
-        set weight [expr double([lindex $bin_totals $i])/$total_dist]
-        set counts_bin [dict create]
-        dict append counts_bin $i [lindex $bin_totals $i]
-        set partial_gofr [get_partial_g_r $counts_bin $weight]
-        set y_partial_gofr [lindex $partial_gofr 1]
-        set partial_sofq [get_partial_s_q $y_partial_gofr "" "" $weight]  
-        set y_partial_sofq [lindex $partial_sofq 1] 
+#     for {set i 0} {$i < [llength $bin_totals]} {incr i} {
+#         set weight [expr double([lindex $bin_totals $i])/$total_dist]
+#         set counts_bin [dict create]
+#         dict append counts_bin $i [lindex $bin_totals $i]
+#         set partial_gofr [get_partial_g_r $counts_bin $weight]
+#         set y_partial_gofr [lindex $partial_gofr 1]
+#         set partial_sofq [get_partial_s_q $y_partial_gofr "" "" $weight]  
+#         set y_partial_sofq [lindex $partial_sofq 1] 
         
-        puts "$counts_bin >>> $weight >>> $y_partial_sofq"
-    }
-}
+#         puts "$counts_bin >>> $weight >>> $y_partial_sofq"
+#     }
+# }
 
 proc ::SQGUI::readElementsFile {} {
     global atoms_groupNames
@@ -1515,11 +1515,11 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
                     if {[dict exists $cur_atom_neighbours_ff_contributions $neighbour]} then {
                         set neighbour_existing_ff_contribution [dict get $cur_atom_neighbours_ff_contributions $neighbour]
                         for {set q 0} {$q < [llength $neighbour_existing_ff_contribution]} {incr q} {
-                            lset neighbour_existing_ff_contribution $q [expr [lindex $neighbour_existing_ff_contribution $q] + [lindex $neighbour_contribution_for_cur_bin $q]]
+                            lset neighbour_existing_ff_contribution $q [expr [lindex $neighbour_existing_ff_contribution $q] + [lindex $neighbour_contribution_for_cur_bin_ff $q]]
                         }
                         dict set cur_atom_neighbours_ff_contributions $neighbour $neighbour_existing_ff_contribution
                     } else {
-                        dict set cur_atom_neighbours_ff_contributions $neighbour $neighbour_contribution_for_cur_bin
+                        dict set cur_atom_neighbours_ff_contributions $neighbour $neighbour_contribution_for_cur_bin_ff
                     } 
                 }
 
@@ -1670,8 +1670,6 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
     set counter 1
     set grp_pairs_count [llength [dict keys $counts_dict]]
     
-    puts "normal: $weights_dict"
-    puts "all-all: $selection_groups_weights_all_denominator"
     foreach grp_pair [dict keys $counts_dict] {      
         # Compute g(r) for current element group pair
         set cur_grp_pair_counts_dict [dict get $counts_dict $grp_pair]
