@@ -1415,12 +1415,13 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
                 foreach sofq $y_partial_sofq {
                     lappend sofq_per_unit [expr $sofq / $cur_pair_bin_total]
                 }
+
                 if {[dict exists $unit_sofqs_ff $pair_key]} then {
                     set bin_cintribs_so_far [dict get $unit_sofqs_ff $pair_key]
                     dict append bin_cintribs_so_far $bin_i $sofq_per_unit
                     dict set unit_sofqs_ff $pair_key $bin_cintribs_so_far
                 } else {
-                    dict append cur_bin_Sq $bin_i $sofq_per_unit
+                    dict set cur_bin_Sq $bin_i $sofq_per_unit
                     dict append unit_sofqs_ff $pair_key $cur_bin_Sq 
                 }
                 
@@ -1508,6 +1509,7 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
                     set neighbour_contribution_for_cur_bin_ff {}  
                     set contribution_for_cur_pair_cur_bin [dict get $contribution_for_cur_pair $bin_i]          
                     foreach cur_unit_sofq $contribution_for_cur_pair_cur_bin {
+                        # puts "$atom_pair_key  $bin_i  $cur_unit_sofq"
                         lappend neighbour_contribution_for_cur_bin_ff [expr [dict get $cur_bin_neighbour_counts $neighbour] * $cur_unit_sofq]
                     }
 
