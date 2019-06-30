@@ -3083,7 +3083,7 @@ proc ::SQGUI::sqgui {args} {
     # frame for selections
     labelframe $w.sel -bd 2 -relief ridge -text "Selections:" -padx 1m -pady 1m
     # frame for q range
-    labelframe $w.in1 -bd 2 -relief ridge -text "q range of Interest:" -padx 1m -pady 1m
+    labelframe $w.in1 -bd 2 -relief ridge -text "q Range Selection:" -padx 1m -pady 1m
     # frame for vis settings
     labelframe $w.in2 -bd 2 -relief ridge -text "Visualization Settings:" -padx 1m -pady 1m
 
@@ -3101,9 +3101,9 @@ proc ::SQGUI::sqgui {args} {
     grid rowconfigure    $w 4 -weight 1    -minsize 80
 
     # frame for g(r) settings
-    labelframe $w.in.gr_settings -bd 2 -relief ridge -text "g(r) settings:" -padx 1m -pady 1m
+    labelframe $w.in.gr_settings -bd 2 -relief ridge -text "g(r) Settings:" -padx 1m -pady 1m
     # frame for s(q) settings
-    labelframe $w.in.sq_settings -bd 2 -relief ridge -text "S(q) settings:" -padx 1m -pady 1m
+    labelframe $w.in.sq_settings -bd 2 -relief ridge -text "S(q) Settings:" -padx 1m -pady 1m
     
     #################
     # subdivide and layout the settings frame
@@ -3132,7 +3132,7 @@ proc ::SQGUI::sqgui {args} {
     set i $w.in.gr_settings
     labelframe $i.frms -bd 2 -relief ridge -text "Frames:" -padx 1m -pady 1m
     labelframe $i.histfrm -bd 2 -relief ridge -text "Histogram Parameters:" -padx 1m -pady 1m
-    labelframe $i.fffrm -bd 2 -relief ridge -text "Form factor Parameters:" -padx 1m -pady 1m
+    labelframe $i.fffrm -bd 2 -relief ridge -text "Form Factor Parameters:" -padx 1m -pady 1m
     label $i.temp1 -text "     " 
     label $i.temp2 -text "     " 
     label $i.temp3 -text "     "
@@ -3205,7 +3205,7 @@ proc ::SQGUI::sqgui {args} {
     grid $i.fffrm.params -row 0 -column 1 -sticky snew
 
     set i $i.fffrm.params
-    label $i.useLbl -text "Use constants:" -anchor e
+    label $i.useLbl -text "Use Constants:" -anchor e
     radiobutton $i.xray    -text "X-ray " -variable ::SQGUI::useXRay  -value "1"
     radiobutton $i.neutron -text "Neutron " -variable ::SQGUI::useXRay  -value "0"
     
@@ -3246,19 +3246,19 @@ proc ::SQGUI::sqgui {args} {
     label $i.temp -text "  "
     label $i.bl -text "Selection 2:"
     entry $i.bt -width 20 -textvariable ::SQGUI::selection2
-    label $i.al1 -text "Sub Selection 1:" 
+    label $i.al1 -text "Subselection 1:" 
     entry $i.at1 -width 20 -textvariable ::SQGUI::subselection1
     label $i.temp2 -text "  "
-    label $i.bl1 -text "Sub Selection 2:"
+    label $i.bl1 -text "Subselection 2:"
     entry $i.bt1 -width 20 -textvariable ::SQGUI::subselection2
-    label $i.cl1 -text "R-bin(s):"
+    label $i.cl1 -text "r-bin(s):"
     entry $i.ct1 -width 20 -textvariable ::SQGUI::rbinRange
     label $i.temp3 -text "  "
     # label $i.temp4 -text "  "
 
-    label $i.al2 -text "Use S(q):"
-    radiobutton $i.usenonFF    -text "Non form factor" -variable ::SQGUI::useNonFFSq  -value "1"
-    radiobutton $i.useFF -text "Form factor" -variable ::SQGUI::useNonFFSq  -value "0"
+    label $i.al2 -text ""
+    radiobutton $i.usenonFF    -text "No Form Factor" -variable ::SQGUI::useNonFFSq  -value "1"
+    radiobutton $i.useFF -text "Form Factor" -variable ::SQGUI::useNonFFSq  -value "0"
     label $i.temp1 -text "  "
     label $i.temp4 -text "  "
     button $i.computeSel -text {Compute Selections} -command [namespace code computeSelections]
@@ -3277,10 +3277,10 @@ proc ::SQGUI::sqgui {args} {
     #################
     # subdivide and layout the q range of interest frame
     set i $w.in1
-    label $i.al -text "Left q bin:" 
+    label $i.al -text "Left q:" 
     # define a slider using scale
     scale $i.at -orient horizontal -length 100 -sliderlength 30 -variable ::SQGUI::leftBin 
-    label $i.bl -text "Right q bin:"
+    label $i.bl -text "Right q:"
     scale $i.bt -orient horizontal -length 100 -sliderlength 30 -variable ::SQGUI::rightBin
     label $i.tmp -text "     "
     button $i.computeRanks -text {Compute Rankings} -command [namespace code DisplayStatsForSelections]
@@ -3304,9 +3304,9 @@ proc ::SQGUI::sqgui {args} {
     grid rowconfigure    $w.in2 0 -weight 1 
     #top N contributors frame
     set i $w.in2.topNframe
-    label $i.al -text "Top N atomic contributors:" 
+    label $i.al -text "Top N Atomic Contributors:" 
     scale $i.at -orient horizontal -length 120 -sliderlength 30  -resolution 1 -variable ::SQGUI::topN
-    label $i.bl -text "Atoms in selection:" 
+    label $i.bl -text "Selected Atom (Serial):" 
     scale $i.bt -orient horizontal -length 120 -sliderlength 30  -resolution 1 -variable ::SQGUI::atomsAll
     label $i.temp2 -text "  "
     grid $i.al $i.at $i.bl $i.bt $i.temp2  -row 0 -sticky snew 
@@ -3320,11 +3320,11 @@ proc ::SQGUI::sqgui {args} {
     #top N atoms or molecules frame
     set i $w.in2.topNOptionframe
     label $i.tmp -text "  "
-    label $i.choosel -text "Visualization option:"
-    radiobutton $i.dispatoms    -text "Top N atoms" -variable ::SQGUI::displayAtoms  -value "1"
-    radiobutton $i.dispmolecules -text "Molecules containing top N atoms" -variable ::SQGUI::displayAtoms  -value "0"
+    label $i.choosel -text "Visualization Option:"
+    radiobutton $i.dispatoms    -text "Top N Atoms" -variable ::SQGUI::displayAtoms  -value "1"
+    radiobutton $i.dispmolecules -text "Molecules Containing Top N Atoms" -variable ::SQGUI::displayAtoms  -value "0"
 
-    label $i.betal -text "Beta option:"
+    label $i.betal -text "Beta Option:"
     radiobutton $i.betaRank    -text "Rank" -variable ::SQGUI::addBeta  -value "1"
     radiobutton $i.betaScore -text "Score" -variable ::SQGUI::addBeta  -value "0"
     label $i.tmp1 -text "  "
