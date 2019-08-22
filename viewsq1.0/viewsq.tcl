@@ -935,7 +935,6 @@ proc ::SQGUI::runSofQ {} {
             lappend rows [lrange $cur_binlist 1 end]
         }
     }
-
     set total_distances_count [ladd $bin_totals]
 
     puts "Calculating total form factor weighted S(q)..."    
@@ -1675,6 +1674,7 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
     foreach grp_pair [dict keys $counts_dict] {      
         # Compute g(r) for current element group pair
         set cur_grp_pair_counts_dict [dict get $counts_dict $grp_pair]
+        puts "$grp_pair >>> $cur_grp_pair_counts_dict"
         set pair_weight [dict get $weights_dict $grp_pair]
         set pair_weight_all_denominator [dict get $selection_groups_weights_all_denominator $grp_pair]
         set partial_gofr_result [get_partial_g_r $cur_grp_pair_counts_dict $pair_weight_all_denominator]
@@ -1712,6 +1712,8 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
                 lset y_partial_sofq_sum $i [expr [lindex $y_partial_sofq $i] + [lindex $y_partial_sofq_sum $i]]
             }
         }
+
+        puts "$grp_pair: $y_partial_sofq"
 
         if {[llength $rbin_contributions_for_total_S_q]==0} then {
             set rbin_contributions_for_total_S_q $rbin_contributions
@@ -1767,7 +1769,7 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
         }
        
     }
-
+    puts "sum: $y_partial_sofq_sum"
     if {$cannotplot} then {
         tk_dialog .errmsg {viewSq Error} "Multiplot is not available." error 0 Dismiss
     } else { 
@@ -2227,6 +2229,8 @@ proc ::SQGUI::computeSelections {} {
         printatomCounts $atoms_sel1 $atoms_sel2 $atoms_subSel1 $atoms_subSel2
 
         set counter 1
+        set processed_sub_group_pairs {}
+
         foreach atom_i $atom_numbers_sel1 {
             set atom_i_grp [dict get $atoms_groupNames $atom_i]
             set atom_i_grp [string range $atom_i_grp 1 [expr [string length $atom_i_grp] -2]]
@@ -2243,15 +2247,21 @@ proc ::SQGUI::computeSelections {} {
                         (([lsearch -exact $atom_numbers_subSel2 $atom_i] >= 0 )&&([lsearch -exact $atom_numbers_subSel1 $atom_j] >= 0 ))} {
                         set inSubSelection 1
                     }
+
+                    # if {($atom_i_grp!=$atom_j_grp && (([lsearch -exact $processed_sub_group_pairs $subgrp_pair] >= 0) || ([lsearch -exact $processed_sub_group_pairs $subgrp_pair_reverse] >= 0)))} then {
+                    #     continue
+                    # }
                     
                     set counts [dict create]
                     set hasCounts 0
                     if { [dict exists $subGroupPair_counts $subgrp_pair] ==1 } then {                       
                         set counts [dict get $subGroupPair_counts $subgrp_pair]     
-                        set hasCounts 1                                    
+                        set hasCounts 1
+                        # lappend processed_sub_group_pairs $subgrp_pair
                     } elseif { [dict exists $subGroupPair_counts $subgrp_pair_reverse] ==1 } then {
                         set counts [dict get $subGroupPair_counts $subgrp_pair_reverse]         
                         set hasCounts 1
+                        # lappend processed_sub_group_pairs $subgrp_pair_reverse
                     }
 
                     if {$hasCounts ==1} then {
@@ -2259,8 +2269,13 @@ proc ::SQGUI::computeSelections {} {
                             set selectionDistances [expr $selectionDistances + [ladd [dict values $counts]]]
                         } else {
                             set selectionDistances [expr $selectionDistances + [expr [ladd [dict values $counts]]/2]]
+                            if {$atom_i_grp != $atom_j_grp} {
+                                foreach key [dict keys $counts] {
+                                    dict set counts $key [expr [dict get $counts $key]/2]
+                                }   
+                            }
                         }
-
+                        
                         if { [dict exists $selection_groups_counts $grp_pair] ==1 } then {
                             dict lappend selection_groups_counts $grp_pair $counts  
                         } elseif { [dict exists $selection_groups_counts $grp_pair_reverse] ==1 } then {    
@@ -2268,7 +2283,7 @@ proc ::SQGUI::computeSelections {} {
                         } else {
                             dict lappend selection_groups_counts $grp_pair $counts              
                         }
-                        
+
                         dict set selection_atom_contributions $atom_i 0
                         dict set selection_atom_contributions $atom_j 0     
                         
@@ -2375,15 +2390,15 @@ proc ::SQGUI::computeSelections {} {
 
             set cur_grp_pair_counts_list [dict get $selection_groups_counts $grp_pair]
             set cur_grp_pair_counts_dict [dict create]
-
             # Aggregate the counts in each group by bin numbers
             foreach item $cur_grp_pair_counts_list {
                 foreach key [dict keys $item] {
-                    if {$selection1!=$selection2} {
-                        set total_distances_count [expr [dict get $item $key] + $total_distances_count ]
-                    } else {
-                        set total_distances_count [expr [expr [dict get $item $key]/2] + $total_distances_count ]
-                    } 
+                    set total_distances_count [expr [dict get $item $key] + $total_distances_count ]
+                    # if {$selection1!=$selection2} {
+                    #     set total_distances_count [expr [dict get $item $key] + $total_distances_count ]
+                    # } else {
+                    #     set total_distances_count [expr [expr [dict get $item $key]/2] + $total_distances_count ]
+                    # } 
                     set grps [split $grp_pair " "]                
                     if {[lindex $grps 0]==[lindex $grps 1]} then {
                         set count_to_add [expr [dict get $item $key] /2 ]
@@ -2417,7 +2432,9 @@ proc ::SQGUI::computeSelections {} {
                 set cur_pair_formfactor [dict get $groupPair_formfactors $grp_pair]
                 set cur_pair_formfactor_list [split [lindex $cur_pair_formfactor 0] " "]
                 lappend same_group_pair_formfactors $cur_pair_formfactor_list
-            }   
+            }
+
+            puts "$grp_pair :: $cur_grp_pair_counts_sum , $all_distances_count"   
         }
         
         computePartialsForSelections $selection_groups_counts $selection_groups_weights
