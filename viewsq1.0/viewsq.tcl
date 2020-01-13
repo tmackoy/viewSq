@@ -1766,6 +1766,7 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
         }
        
     }
+
     if {$cannotplot} then {
         tk_dialog .errmsg {viewSq Error} "Multiplot is not available." error 0 Dismiss
     } else { 
@@ -2227,12 +2228,16 @@ proc ::SQGUI::computeSelections {} {
         set counter 1
         set processed_sub_group_pairs {}
 
-        foreach atom_i $atom_numbers_sel1 {
-            set atom_i_grp [dict get $atoms_groupNames $atom_i]
-            set atom_i_grp [string range $atom_i_grp 1 [expr [string length $atom_i_grp] -2]]
-            foreach atom_j $atom_numbers_sel2 {
-                if {$atom_i != $atom_j } {
+        # if the selections are same - make the loop as i-> 1-n and j-> i+1-n
+        # else run both the loops to entire length of each list
+        if {$selection1==$selection2} then {
+            for {set i 0} {$i < [llength $atom_numbers_sel1]} {incr i} {
+                for {set j [expr $i+1]} {$j < [llength $atom_numbers_sel2]} {incr j} {
                     set inSubSelection 0
+                    set atom_i [lindex $atom_numbers_sel1 $i]
+                    set atom_j [lindex $atom_numbers_sel2 $j] 
+                    set atom_i_grp [dict get $atoms_groupNames $atom_i]
+                    set atom_i_grp [string range $atom_i_grp 1 [expr [string length $atom_i_grp] -2]]
                     set atom_j_grp [dict get $atoms_groupNames $atom_j]
                     set atom_j_grp [string range $atom_j_grp 1 [expr [string length $atom_j_grp] -2]]
                     set subgrp_pair "\[${atom_i_grp}:${atom_i}\] \[${atom_j_grp}:${atom_j}\]"
@@ -2245,80 +2250,156 @@ proc ::SQGUI::computeSelections {} {
                     }
 
                     set counts [dict create]
-                    set hasCounts 0
-                    if { [dict exists $subGroupPair_counts $subgrp_pair] ==1 } then {                       
-                        set counts [dict get $subGroupPair_counts $subgrp_pair]     
-                        set hasCounts 1
-                    } elseif { [dict exists $subGroupPair_counts $subgrp_pair_reverse] ==1 } then {
-                        set counts [dict get $subGroupPair_counts $subgrp_pair_reverse]         
-                        set hasCounts 1
-                    }
+                        set hasCounts 0
+                        if { [dict exists $subGroupPair_counts $subgrp_pair] ==1 } then {                       
+                            set counts [dict get $subGroupPair_counts $subgrp_pair]     
+                            set hasCounts 1
+                        } elseif { [dict exists $subGroupPair_counts $subgrp_pair_reverse] ==1 } then {
+                            set counts [dict get $subGroupPair_counts $subgrp_pair_reverse]         
+                            set hasCounts 1
+                        }
 
-                    if {$hasCounts ==1} then {
-                        if {$selection1!=$selection2} {
+                        if {$hasCounts ==1} then {
                             set selectionDistances [expr $selectionDistances + [ladd [dict values $counts]]]
-                        } else {
-                            set selectionDistances [expr $selectionDistances + [expr [ladd [dict values $counts]]/2]]
-                            foreach key [dict keys $counts] {
-                                dict set counts $key [expr [dict get $counts $key]/2]
-                            }   
-                        }
-                        
-                        if { [dict exists $selection_groups_counts $grp_pair] ==1 } then {
-                            dict lappend selection_groups_counts $grp_pair $counts  
-                        } elseif { [dict exists $selection_groups_counts $grp_pair_reverse] ==1 } then {    
-                            dict lappend selection_groups_counts $grp_pair_reverse $counts
-                        } else {
-                            dict lappend selection_groups_counts $grp_pair $counts              
-                        }
+                            
+                            if { [dict exists $selection_groups_counts $grp_pair] ==1 } then {
+                                dict lappend selection_groups_counts $grp_pair $counts  
+                            } elseif { [dict exists $selection_groups_counts $grp_pair_reverse] ==1 } then {    
+                                dict lappend selection_groups_counts $grp_pair_reverse $counts
+                            } else {
+                                dict lappend selection_groups_counts $grp_pair $counts              
+                            }
 
-                        dict set selection_atom_contributions $atom_i 0
-                        dict set selection_atom_contributions $atom_j 0     
-                        
-                        if { $inSubSelection } then {
-                            if {$rbinRange=="all"} then {
-                                if { ($subselection1!=$subselection2) || ( ($subselection1=="all") && $selection1!=$selection2) } then {
+                            dict set selection_atom_contributions $atom_i 0
+                            dict set selection_atom_contributions $atom_j 0     
+                            
+                            if { $inSubSelection } then {
+                                if {$rbinRange=="all"} then {
                                     set subSelectionDistances [expr $subSelectionDistances + [ladd [dict values $counts]]]
                                 } else {
-                                    set subSelectionDistances [expr $subSelectionDistances + [expr [ladd [dict values $counts]]/2]]
-                                }
-                                
-                            } else {
-                                set binsOfInterest {}
-                                set binRanges [split $rbinRange ","]                                
-                                foreach binRange $binRanges {
-                                    set binIndices [split $binRange "-"]
-                                    if {[llength $binIndices]>1} then {
-                                        set minSelectedR [expr int([expr [lindex $binIndices 0] / $delta])]
-                                        set maxSelectedR [expr int([expr [lindex $binIndices 1] / $delta])]
-                                        for {set b $minSelectedR} {$b <= $maxSelectedR} {incr b} {                                        
-                                            lappend binsOfInterest $b
-                                        }
-                                    } else {
-                                        lappend binsOfInterest [expr int([expr $binIndices / $delta])]
-                                    }
-                                }
-                                
-                                foreach bin_key [dict keys $counts] {
-                                    if {[lsearch -exact $binsOfInterest $bin_key] >= 0} {                                        
-                                        if { ($subselection1!=$subselection2) || ( ($subselection1=="all") && $selection1!=$selection2) } then {
-                                            set subSelectionDistances [expr $subSelectionDistances + [dict values $counts]]
+                                    set binsOfInterest {}
+                                    set binRanges [split $rbinRange ","]                                
+                                    foreach binRange $binRanges {
+                                        set binIndices [split $binRange "-"]
+                                        if {[llength $binIndices]>1} then {
+                                            set minSelectedR [expr int([expr [lindex $binIndices 0] / $delta])]
+                                            set maxSelectedR [expr int([expr [lindex $binIndices 1] / $delta])]
+                                            for {set b $minSelectedR} {$b <= $maxSelectedR} {incr b} {                                        
+                                                lappend binsOfInterest $b
+                                            }
                                         } else {
-                                            set subSelectionDistances [expr $subSelectionDistances + [expr [dict get $counts $bin_key]/2]]
+                                            lappend binsOfInterest [expr int([expr $binIndices / $delta])]
                                         }
-                                    }                                    
-                                }                                
+                                    }
+                                    
+                                    foreach bin_key [dict keys $counts] {
+                                        if {[lsearch -exact $binsOfInterest $bin_key] >= 0} {                                        
+                                            set subSelectionDistances [expr $subSelectionDistances + [dict values $counts]]
+                                        }                                    
+                                    }                                
+                                }  
+                            }           
+                        }  
+
+                }
+                if {[expr $counter%100]==0} {
+                    puts "$counter out of $atoms_sel1 atoms in selection 1 processed."
+                }
+                incr counter
+            }
+        } else {
+            foreach atom_i $atom_numbers_sel1 {
+                set atom_i_grp [dict get $atoms_groupNames $atom_i]
+                set atom_i_grp [string range $atom_i_grp 1 [expr [string length $atom_i_grp] -2]]
+                foreach atom_j $atom_numbers_sel2 {
+                    if {$atom_i != $atom_j } {
+                        set inSubSelection 0
+                        set atom_j_grp [dict get $atoms_groupNames $atom_j]
+                        set atom_j_grp [string range $atom_j_grp 1 [expr [string length $atom_j_grp] -2]]
+                        set subgrp_pair "\[${atom_i_grp}:${atom_i}\] \[${atom_j_grp}:${atom_j}\]"
+                        set subgrp_pair_reverse "\[${atom_j_grp}:${atom_j}\] \[${atom_i_grp}:${atom_i}\]"
+                        set grp_pair "\[${atom_i_grp}\] \[${atom_j_grp}\]"
+                        set grp_pair_reverse "\[${atom_j_grp}\] \[${atom_i_grp}\]"
+                        if {(([lsearch -exact $atom_numbers_subSel1 $atom_i] >= 0 )&&([lsearch -exact $atom_numbers_subSel2 $atom_j] >= 0 )) || 
+                            (([lsearch -exact $atom_numbers_subSel2 $atom_i] >= 0 )&&([lsearch -exact $atom_numbers_subSel1 $atom_j] >= 0 ))} {
+                            set inSubSelection 1
+                        }
+
+                        set counts [dict create]
+                        set hasCounts 0
+                        if { [dict exists $subGroupPair_counts $subgrp_pair] ==1 } then {                       
+                            set counts [dict get $subGroupPair_counts $subgrp_pair]     
+                            set hasCounts 1
+                        } elseif { [dict exists $subGroupPair_counts $subgrp_pair_reverse] ==1 } then {
+                            set counts [dict get $subGroupPair_counts $subgrp_pair_reverse]         
+                            set hasCounts 1
+                        }
+
+                        if {$hasCounts ==1} then {
+                            if {$selection1!=$selection2} {
+                                set selectionDistances [expr $selectionDistances + [ladd [dict values $counts]]]
+                            } else {
+                                set selectionDistances [expr $selectionDistances + [expr [ladd [dict values $counts]]/2]]
+                                foreach key [dict keys $counts] {
+                                    dict set counts $key [expr [dict get $counts $key]/2]
+                                }
                             }
                             
-                        }           
-                    }               
-                }
-            }
+                            if { [dict exists $selection_groups_counts $grp_pair] ==1 } then {
+                                dict lappend selection_groups_counts $grp_pair $counts  
+                            } elseif { [dict exists $selection_groups_counts $grp_pair_reverse] ==1 } then {    
+                                dict lappend selection_groups_counts $grp_pair_reverse $counts
+                            } else {
+                                dict lappend selection_groups_counts $grp_pair $counts              
+                            }
 
-            if {[expr $counter%100]==0} {
-                puts "$counter out of $atoms_sel1 atoms in selection 1 processed."
+                            dict set selection_atom_contributions $atom_i 0
+                            dict set selection_atom_contributions $atom_j 0     
+                            
+                            if { $inSubSelection } then {
+                                if {$rbinRange=="all"} then {
+                                    if { ($subselection1!=$subselection2) || ( ($subselection1=="all") && $selection1!=$selection2) } then {
+                                        set subSelectionDistances [expr $subSelectionDistances + [ladd [dict values $counts]]]
+                                    } else {
+                                        set subSelectionDistances [expr $subSelectionDistances + [expr [ladd [dict values $counts]]/2]]
+                                    }
+                                    
+                                } else {
+                                    set binsOfInterest {}
+                                    set binRanges [split $rbinRange ","]                                
+                                    foreach binRange $binRanges {
+                                        set binIndices [split $binRange "-"]
+                                        if {[llength $binIndices]>1} then {
+                                            set minSelectedR [expr int([expr [lindex $binIndices 0] / $delta])]
+                                            set maxSelectedR [expr int([expr [lindex $binIndices 1] / $delta])]
+                                            for {set b $minSelectedR} {$b <= $maxSelectedR} {incr b} {                                        
+                                                lappend binsOfInterest $b
+                                            }
+                                        } else {
+                                            lappend binsOfInterest [expr int([expr $binIndices / $delta])]
+                                        }
+                                    }
+                                    
+                                    foreach bin_key [dict keys $counts] {
+                                        if {[lsearch -exact $binsOfInterest $bin_key] >= 0} {                                        
+                                            if { ($subselection1!=$subselection2) || ( ($subselection1=="all") && $selection1!=$selection2) } then {
+                                                set subSelectionDistances [expr $subSelectionDistances + [dict values $counts]]
+                                            } else {
+                                                set subSelectionDistances [expr $subSelectionDistances + [expr [dict get $counts $bin_key]/2]]
+                                            }
+                                        }                                    
+                                    }                                
+                                }  
+                            }           
+                        }               
+                    }
+                }
+
+                if {[expr $counter%100]==0} {
+                    puts "$counter out of $atoms_sel1 atoms in selection 1 processed."
+                }
+                incr counter
             }
-            incr counter
         }
         
         printdistanceCounts $selectionDistances $subSelectionDistances $all_distances_count
@@ -2351,7 +2432,6 @@ proc ::SQGUI::computeSelections {} {
                         if {[lsearch -exact $required_atoms $neighbour_key] >= 0} { 
                             set startIdx [expr $curIdx +1]
                             set neighbour_Sq [split [string trim [string range $line $startIdx [expr $curEndIdx-1]]] " "]
-                            
                             if {[llength $neighbour_total_contribution]>0} then {
                                 for {set Sq_idx 0} {$Sq_idx < [llength $neighbour_total_contribution]} {incr Sq_idx} {
                                     if { [catch {lset neighbour_total_contribution $Sq_idx [expr [lindex $neighbour_Sq $Sq_idx] + [lindex $neighbour_total_contribution $Sq_idx] ] } fid] } {
@@ -2367,7 +2447,6 @@ proc ::SQGUI::computeSelections {} {
                         set startIdx [expr $curEndIdx + 1]
                         set curIdx [string first "\{" $line $startIdx]                    
                     }
-                    # puts "$neighbour_total_contribution"
                     dict set selection_atom_contributions $atom_key [list $neighbour_total_contribution {} {}]
                 }
             }                 
@@ -2384,7 +2463,6 @@ proc ::SQGUI::computeSelections {} {
                     set total_distances_count [expr [dict get $item $key] + $total_distances_count ]
                     set grps [split $grp_pair " "]                
                     set count_to_add [dict get $item $key]
-                    
                     if {[dict exists $cur_grp_pair_counts_dict $key]} then {
                         dict set cur_grp_pair_counts_dict $key [expr [dict get $cur_grp_pair_counts_dict $key] + $count_to_add]
                     } else {
