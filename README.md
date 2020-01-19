@@ -1,11 +1,5 @@
 # viewSq
 
-Program submission. Manuscripts that describe computer programs and NVAs must be accompanied
-by: the program source code; job control scripts, where applicable; a README file giving the names and a brief description of all the files that make up the package and clear instructions on the installation and execution of the program; sample input and output data for at least one comprehensive test run that will convince the reviewers that the program operates as specified; and, where appropriate, a user manual.
-
-
-A compressed archive program file or files, containing these items, should be uploaded at the "Attach Files" stage of the EES submission. The maximum file size allowed is 700Mb. For files larger than this the author should contact the Technical Editor at cpc.mendeley@gmail.com.
-
 #### FILE DESCRIPTIONS
 
 Calculate_rdf_stats_py.py --  
