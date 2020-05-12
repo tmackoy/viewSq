@@ -98,7 +98,7 @@ namespace eval ::SQGUI:: {
     set subGroupPair_counts [dict create];                      # stores the counts of all the subgroup pairs
     set allPairsAggregated_counts [dict create];                # stores the aggregated counts of all the group pairs
     set allPairsAggregated_weights [dict create];               # stores the aggregated weights of all the group pairs
-    set group_pair_s_q [dict create];                           # stores the partial S(q)s of all group pairs
+    set group_pair_s_q {};                                      # stores the partial S(q)s of all group pairs
     set ff_weighted_group_pair_s_q [dict create];               # stores the formfactor weighted partial S(q)s of all group pairs
     set rbin_contributions_for_total_S_q {};                    # stores r bin contributions for total S(q) at each q for selections
     set rbin_contributions_for_ff_weighted_S_q {};              # stores r bin contributions for form factored weighted S(q) at each q for selections
@@ -408,6 +408,7 @@ proc ::SQGUI::get_partial_s_q_with_contributions {y_gofr pair_weight} {
     variable delta_q
     variable density
 
+    set rbin_contributions_to_S_q {}
     set numbins [expr $rmax / $delta]
     set adjusted_max_q [expr $max_q + [expr $delta_q / 100]]
 
@@ -437,12 +438,14 @@ proc ::SQGUI::get_partial_s_q_with_contributions {y_gofr pair_weight} {
             }
         }
 
+        lappend sqx $varx
+        lappend sqy $vary
         lappend s_q_pos_contributions $pos_contribution 
         lappend s_q_neg_contributions $neg_contribution
-        lappend sqy $vary
+        lappend rbin_contributions_to_S_q $rbin_contributions
     }
 
-    return [list $sqy $s_q_pos_contributions $s_q_neg_contributions]
+    return [list $sqx $sqy $s_q_pos_contributions $s_q_neg_contributions $rbin_contributions_to_S_q]
 }
 
 proc ::SQGUI::get_formfactor_weighted_partial_s_q {y_gofr weight pair_formfactor_list contributions_file_path element_pair } {
@@ -575,6 +578,8 @@ proc ::SQGUI::get_formfactor_weighted_partial_s_q {y_gofr weight pair_formfactor
 proc ::SQGUI::get_formfactor_weighted_partial_s_q_with_contributions {y_gofr weight pair_formfactor_list } {
     global all_same_elements_weights
     global all_same_group_pair_formfactors
+    set s_q_pos_contributions {}
+    set s_q_neg_contributions {}
 
     set tcl_precision 12
     variable delta
@@ -637,13 +642,13 @@ proc ::SQGUI::get_formfactor_weighted_partial_s_q_with_contributions {y_gofr wei
             }
         }
     
-        lappend rbin_contributions_to_ff_S_q $rbin_contributions
-        lappend sqx $varx
+        lappend s_q_pos_contributions $pos_contribution 
+        lappend s_q_neg_contributions $neg_contribution
         lappend sqy $vary
         incr i_idx
     }
 
-    return [list $sqy]
+    return [list $sqy $s_q_pos_contributions $s_q_neg_contributions]
 }
 
 proc ::SQGUI::convertListToDict {valuesList} {
@@ -1303,9 +1308,9 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
         # Compute s(q) using above g(r)
         set partial_sofq_result [get_partial_s_q_with_contributions $y_partial_gofr $pair_weight]
 
-        set y_partial_sofq [lindex $partial_sofq_result 0] 
-        set s_q_pos_contributions [lindex $partial_sofq_result 1] 
-        set s_q_neg_contributions [lindex $partial_sofq_result 2] 
+        set y_partial_sofq [lindex $partial_sofq_result 1] 
+        set s_q_pos_contributions [lindex $partial_sofq_result 2] 
+        set s_q_neg_contributions [lindex $partial_sofq_result 3] 
 
         # Get the magnitude of S(q) at each q and divide it by total count to get S(q) per unit
         if {[lindex $bin_totals $bin_i]>0} then {
@@ -1573,7 +1578,7 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
 
     set group_pair_g_r [dict create]
     set weighted_group_pair_g_r [dict create]
-    set group_pair_s_q [dict create]
+    set group_pair_s_q {}
     set ff_weighted_group_pair_s_q [dict create]
     set rbin_contributions_for_total_S_q {}
     set rbin_contributions_for_ff_weighted_S_q {}
@@ -1581,11 +1586,11 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
     set selection_S_q_neg_contributions [dict create]
     set selection_weighted_S_q_pos_contributions [dict create]
     set selection_weighted_S_q_neg_contributions [dict create]
-    set x_partial_gofr {}
-    set y_partial_gofr_sum {}
-    set x_partial_sofq {}
-    set y_partial_sofq_sum {}
     set y_weighted_partial_sofq_sum {}
+    set x_total_gofr {}
+    set y_total_gofr {}
+    set x_total_sofq {}
+    set y_total_sofq {}
 
     set unweighted_contributions_file $input_file_path
     append unweighted_contributions_file "r_contributions_sq.dat"
@@ -1603,60 +1608,50 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
     set counter 1
     set grp_pairs_count [llength [dict keys $counts_dict]]
 
-    foreach grp_pair [dict keys $counts_dict] {      
-        # Compute g(r) for current element group pair
+    set selections_all_bin_values [dict create]
+
+    # Merging all the group pair counts in to one single dictionary
+    foreach grp_pair [dict keys $counts_dict] {
         set cur_grp_pair_counts_dict [dict get $counts_dict $grp_pair]
-        set pair_weight [dict get $weights_dict $grp_pair]
+        foreach bin [dict keys $cur_grp_pair_counts_dict] {
+            set cur_bin_val [dict get $cur_grp_pair_counts_dict $bin]
+            if {[dict exists $selections_all_bin_values $bin]} then {
+                dict set selections_all_bin_values $bin [expr [dict get $selections_all_bin_values $bin]+$cur_bin_val]
+            } else {
+                dict append selections_all_bin_values $bin $cur_bin_val
+            }
+        }
+    }
+
+    # Calculate g(r) for all the counts in the selections
+    set total_gofr_result [get_partial_g_r $selections_all_bin_values 1]
+    set x_total_gofr [lindex $total_gofr_result 0]
+    set y_total_gofr [lindex $total_gofr_result 1]
+    
+    # Calculate non FF weighted S(q) for all the counts in the selections
+    set total_sofq_result [get_partial_s_q_with_contributions $y_total_gofr 1]
+    set x_total_sofq [lindex $total_sofq_result 0]
+    set y_total_sofq [lindex $total_sofq_result 1]
+    set pos_contributions [lindex $total_sofq_result 2]
+    set neg_contributions [lindex $total_sofq_result 3]
+    set rbin_contributions_for_total_S_q [lindex $total_sofq_result 4]
+
+    # Convert positive and negative contributions arrays into dictonaries for consistent processing in later stages
+    for {set i 0} {$i < [llength $pos_contributions]} {incr i} {
+        dict append selection_S_q_pos_contributions [lindex $x_total_sofq $i] [lindex $pos_contributions $i]
+    }
+    for {set i 0} {$i < [llength $neg_contributions]} {incr i} {
+        dict append selection_S_q_neg_contributions [lindex $x_total_sofq $i] [lindex $neg_contributions $i]
+    }
+
+    # Save the non FF S(q) for future use during displaying statistics in table.
+    set group_pair_s_q $y_total_sofq
+
+    # Calculate FF weighted S(q) for each group pair and sum them.
+    foreach grp_pair [dict keys $counts_dict] {      
+       
+        set cur_grp_pair_counts_dict [dict get $counts_dict $grp_pair]
         set pair_weight_all_denominator [dict get $selection_groups_weights_all_denominator $grp_pair]
-        set partial_gofr_result [get_partial_g_r $cur_grp_pair_counts_dict $pair_weight_all_denominator]
-
-        set x_partial_gofr [lindex $partial_gofr_result 0]
-        set y_partial_gofr [lindex $partial_gofr_result 1]
-        
-        # weight the element group's partial g(r) using the element group pair's weight     
-        dict append group_pair_g_r $grp_pair $y_partial_gofr
-        set weighted_y_partial_gofr {}
-        for {set k 0} {$k < [llength $y_partial_gofr]} {incr k} {
-            lappend weighted_y_partial_gofr [expr [lindex $y_partial_gofr $k] * $pair_weight_all_denominator]
-        }
-        if { [llength $y_partial_gofr_sum] == 0 } then {
-            set y_partial_gofr_sum $weighted_y_partial_gofr
-        } else {
-            for {set i 0} {$i < [llength $y_partial_gofr_sum]} {incr i} {
-                lset y_partial_gofr_sum $i [expr [lindex $weighted_y_partial_gofr $i] + [lindex $y_partial_gofr_sum $i]]
-            }
-        }
-        dict append weighted_group_pair_g_r $grp_pair $weighted_y_partial_gofr
-
-        # Compute s(q) for current element group pair
-        set partial_sofq_result [get_partial_s_q $y_partial_gofr $unweighted_contributions_file $grp_pair $pair_weight_all_denominator]
-        set x_partial_sofq [lindex $partial_sofq_result 0]
-        set y_partial_sofq [lindex $partial_sofq_result 1] 
-        set rbin_contributions [lindex $partial_sofq_result 2]
-        
-        dict append group_pair_s_q $grp_pair $y_partial_sofq
-
-        if { [llength $y_partial_sofq_sum] == 0 } then {
-            set y_partial_sofq_sum $y_partial_sofq
-        } else {
-            for {set i 0} {$i < [llength $y_partial_sofq_sum]} {incr i} {
-                lset y_partial_sofq_sum $i [expr [lindex $y_partial_sofq $i] + [lindex $y_partial_sofq_sum $i]]
-            }
-        }
-
-        if {[llength $rbin_contributions_for_total_S_q]==0} then {
-            set rbin_contributions_for_total_S_q $rbin_contributions
-        } else {
-            for {set i_contribution 0} {$i_contribution < [llength $rbin_contributions_for_total_S_q]} {incr i_contribution} {          
-                set rbins_for_q_so_far [lindex $rbin_contributions_for_total_S_q $i_contribution]
-                set rbins_for_q_new [lindex $rbin_contributions $i_contribution]
-                for {set q 0} {$q < [llength $rbins_for_q_new]} {incr q} {
-                    lset rbins_for_q_so_far $q [expr [lindex $rbins_for_q_so_far $q] + [lindex $rbins_for_q_new $q]]
-                }
-
-                lset rbin_contributions_for_total_S_q $i_contribution $rbins_for_q_so_far
-            }
-        }
 
         # Get the current group pair's formfactor values list
         set cur_pair_formfactor [dict get $groupPair_formfactors $grp_pair]
@@ -1709,14 +1704,14 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
         if {$auto_call} then {
             set addToTitle "for the selection "
             # plot total g(r) for the selections
-            set selection_total_gofr_plot [multiplot -x $x_partial_gofr -y $y_partial_gofr_sum -title "Selections - g(r) plot (total atomic distances: $total_distances_count, $sel1_20-$sel2_20)" -lines -linewidth 2 -marker point -plot]
+            set selection_total_gofr_plot [multiplot -x $x_total_gofr -y $y_total_gofr -title "Selections - g(r) plot (total atomic distances: $total_distances_count, $sel1_20-$sel2_20)" -lines -linewidth 2 -marker point -plot]
 
             # plot total s(q) for the selections
-            set selection_total_sofq_plot [multiplot -x $x_partial_sofq -y $y_partial_sofq_sum -title "Selections - S(q) and form factor weighted S(q) plot ($sel1_20-$sel2_20)" \
+            set selection_total_sofq_plot [multiplot -x $x_total_sofq -y $y_total_sofq -title "Selections - S(q) and form factor weighted S(q) plot ($sel1_20-$sel2_20)" \
                                                     -legend "S(q)" -lines -linewidth 3 -marker point -plot]
 
             # plot form factor weighted s(q) for the selections on the same plot as total s(q) for the selections
-            $selection_total_sofq_plot add $x_partial_sofq $y_weighted_partial_sofq_sum -lines -linewidth 2 -linecolor blue -legend "Form factor weighted S(q) ($sel1_20-$sel2_20)" -marker point -plot
+            $selection_total_sofq_plot add $x_total_sofq $y_weighted_partial_sofq_sum -lines -linewidth 2 -linecolor blue -legend "Form factor weighted S(q) ($sel1_20-$sel2_20)" -marker point -plot
             
             # plot positive and negative contributions to s(q) at each q separately
             set selection_S_q_pos_contributions_y [dict values $selection_S_q_pos_contributions]
@@ -1736,7 +1731,7 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
             set SQ_plot_pos_abs_neg_contributions [multiplot -x [dict keys $selection_S_q_pos_contributions] -y $S_q_pos_abs_neg_contributions \
                                                     -title "Selections - sum of positive and magnitude of negative contributions to S(q) ($sel1_20-$sel2_20)" -lines -linewidth 2 -marker point -plot ]                  
         } else {
-           $SQ_plot add $x_partial_sofq $y_weighted_partial_sofq_sum -lines -linewidth 2 -linecolor blue -marker point -legend "Form Factor Weighted S(q)" -plot
+           $SQ_plot add $x_total_sofq $y_weighted_partial_sofq_sum -lines -linewidth 2 -linecolor blue -marker point -legend "Form Factor Weighted S(q)" -plot
         }
 
         # plot positive and negative contributions to form factor weighted s(q) at each q separately
@@ -2501,8 +2496,9 @@ proc ::SQGUI::computeSelections {} {
                 set cur_pair_formfactor_list [split [lindex $cur_pair_formfactor 0] " "]
                 lappend same_group_pair_formfactors $cur_pair_formfactor_list
             }
-        }
-        
+        }        
+        puts "Done calculating atom and neighbor contributions from selections"
+
         computePartialsForSelections $selection_groups_counts $selection_groups_weights
         puts "Completed!"
         #testBinSummands $all_distances_count
@@ -2597,9 +2593,8 @@ proc ::SQGUI::DisplayStatsForSelections {} {
     set adjusted_leftBin [expr $leftBin - [expr $delta_q/100]]
     for {set cur_q $min_q} {$cur_q <= $adjusted_rightBin} {set cur_q [expr {$cur_q + $delta_q}]} {
         if {$cur_q >= $adjusted_leftBin} {
-            foreach key [dict keys $group_pair_s_q] {
-                set s_q_values [dict get $group_pair_s_q $key]              
-                set s_q_val_selected_range [expr $s_q_val_selected_range + [lindex $s_q_values $q_idx]]  
+            set s_q_val_selected_range [expr $s_q_val_selected_range + [lindex $group_pair_s_q $q_idx]]  
+            foreach key [dict keys $ff_weighted_group_pair_s_q] {
                 set ff_s_q_values [dict get $ff_weighted_group_pair_s_q $key]                
                 set ff_s_q_val_selected_range [expr $ff_s_q_val_selected_range + [lindex $ff_s_q_values $q_idx]]            
             }
