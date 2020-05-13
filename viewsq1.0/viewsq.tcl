@@ -18,6 +18,7 @@ namespace eval ::SQGUI:: {
     variable atom_numbers_sel1 "";  # atom numbers in selection 1
     variable atom_numbers_sel2 "";  # atom numbers in selection 2
     variable useNonFFSq     1;      # Use non FF weighted S(q) for contributions
+    variable showNeighborPlotFlag 0; # stores whether to display top N neighbors plot
 
     variable delta      "0.1";      # delta for histogram
     variable rmax      "10.0";      # max r in histogram
@@ -2441,6 +2442,7 @@ proc ::SQGUI::UpdateRenderer {val} {
     variable leftBin
     variable rightBin 
     variable useNonFFSq
+    variable showNeighborPlotFlag
 
     variable vis_selection1
     variable selection1_colorId
@@ -2593,8 +2595,11 @@ proc ::SQGUI::UpdateRenderer {val} {
          } 
 
         if {[catch {$rank_plot quit} ]} then {}
+
+        if {$showNeighborPlotFlag} then {        
         set rank_plot [multiplot -x $x_bins -y $y_bins -title "Top Neighbors" -lines -linewidth 2 -marker point -plot ]   
-        $rank_plot add $x_bins $atom_properties       
+        $rank_plot add $x_bins $atom_properties     
+        }  
 
         foreach {pair} [lrange $topN_Neighbours_Sorted 0 [expr $selected_topnN -1]] {     
             set selected_atoms [concat $selected_atoms " " [lindex $pair 0]]
@@ -3032,8 +3037,10 @@ proc ::SQGUI::sqgui {args} {
     scale $i.at -orient horizontal -length 120 -sliderlength 30  -resolution 1 -variable ::SQGUI::topN
     label $i.bl -text "Selected Atom (Serial):" 
     scale $i.bt -orient horizontal -length 120 -sliderlength 30  -resolution 1 -variable ::SQGUI::atomsAll
-    label $i.temp2 -text "  "
-    grid $i.al $i.at $i.bl $i.bt $i.temp2  -row 0 -sticky snew 
+    label $i.temp2 -text "Show Neighbor Ranking Plot:"
+    radiobutton $i.dontShowNeighborRankingRankingPlot -text "No" -variable ::SQGUI::showNeighborPlotFlag  -value "0"
+    radiobutton $i.showNeighborRankingRankingPlot -text "Yes" -variable ::SQGUI::showNeighborPlotFlag  -value "1"
+    grid $i.al $i.at $i.bl $i.bt $i.temp2 $i.dontShowNeighborRankingRankingPlot $i.showNeighborRankingRankingPlot -row 0 -sticky snew 
     
     grid columnconfigure $i 0 -weight 2
     grid columnconfigure $i 1 -weight 4
