@@ -1759,14 +1759,10 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
 
 proc ::SQGUI::printatomCounts {atoms_sel1 atoms_sel2 atoms_subSel1 atoms_subSel2} {
     puts "Number of atoms in selection1: $atoms_sel1   Number of atoms in selection2: $atoms_sel2"
-    puts "Number of atoms in subselection1: $atoms_subSel1   Number of atoms in subselection2: $atoms_subSel2"    
 }
 
 proc ::SQGUI::printdistanceCounts {selectionDistances subSelectionDistances all_distances_count} {
-    set subSelectionPercent_Total [expr {double(round(10000 * [expr double($subSelectionDistances) / $all_distances_count]))/100}]
-    set subSelectionPercent_Selection [expr {double(round(10000 * [expr double($subSelectionDistances) / $selectionDistances]))/100}]
-    puts "Distances in subselection: $subSelectionDistances   Distances in selection: $selectionDistances   Total Distances in bins: $all_distances_count"
-    puts "Percent subselection of Selection: $subSelectionPercent_Selection   Percent subselection of Total Distances in bins: $subSelectionPercent_Total"
+    puts "Distances in selection: $selectionDistances   Total Distances in bins: $all_distances_count"
 }
 
 ##### set selection_atom_contributions dict to non-FF / FF based on the UI selection.
@@ -1838,176 +1834,13 @@ proc ::SQGUI::computeSelections {} {
     puts "\nCalculating partials for selections..."
     if {$selection1=="all" && $selection2=="all"} then {    
         set total_distances_count $all_distances_count    
-        set selectionDistances $total_distances_count    
-        if {$subselection1 =="all" && $subselection2=="all" && $rbinRange=="all"} then {              
-            set subSelectionDistances $total_distances_count   
-            set atoms_sel1 $num_atoms
-            set atoms_sel2 $num_atoms
-            set atoms_subSel1 $num_atoms
-            set atoms_subSel2 $num_atoms
-            set sel1 [atomselect $molid "$selection1"]
-            set sel2 [atomselect $molid "$selection2"]
-            set atom_numbers_sel1 [$sel1 get serial]
-            set atom_numbers_sel2 [$sel2 get serial]
-        } else {
-            set selection_done 0
-            # Check if the selection string contains the delimeters ':' or ','. 
-            # If yes, parse the string and create selection.
-            # Else, Use the VMD's selection.
-            set customSelections [split $subselection1 ":"]
-            set selStr "serial "
-            foreach c_sel $customSelections {
-                set components [split $c_sel ","]
-                if {[llength $components]<3} then {
-                    if {[catch {atomselect $molid "$subselection1"} subSel1]} then {
-                        tk_dialog .errmsg {viewSq Error} "There was an error creating the selections:\n$subselection1" error 0 Dismiss
-                        return
-                    }
-                    set selection_done 1
-                    break
-                } else {
-                    set sel_idx 0                    
-                    for {set sel_start [lindex $components 0]} {$sel_idx < [lindex $components 2]} {incr sel_start [lindex $components 1]} {
-                        append selStr "$sel_start "
-                        incr sel_idx
-                    }                    
-                }
-            }
-            if {$selection_done==0} {
-                if {[catch {atomselect $molid "$selStr"} subSel1]} then {
-                    tk_dialog .errmsg {viewSq Error} "There was an error creating the selections:\n$subselection1" error 0 Dismiss
-                    return
-                }
-            }
-
-            set selection_done 0
-            set customSelections [split $subselection2 ":"]
-            set selStr "serial "
-            foreach c_sel $customSelections {
-                set components [split $c_sel ","]
-                if {[llength $components]<3} then {
-                    if {[catch {atomselect $molid "$subselection2"} subSel2]} then {
-                        tk_dialog .errmsg {viewSq Error} "There was an error creating the selections:\n$subselection2" error 0 Dismiss
-                        return
-                    }
-                    set selection_done 1
-                    break
-                } else {
-                    set sel_idx 0                    
-                    for {set sel_start [lindex $components 0]} {$sel_idx < [lindex $components 2]} {incr sel_start [lindex $components 1]} {
-                        append selStr "$sel_start "
-                        incr sel_idx
-                    }
-                }
-            }
-            if {$selection_done==0} {
-                if {[catch {atomselect $molid "$selStr"} subSel2]} then {
-                    tk_dialog .errmsg {viewSq Error} "There was an error creating the selections:\n$subselection2" error 0 Dismiss
-                    return
-                }
-            }
-
-            if {[catch {atomselect $molid "$selection1"} sel1] \
-                    || [catch {atomselect $molid "$selection2"} sel2] } then {
-                tk_dialog .errmsg {viewSq Error} "There was an error creating the selections:\n$selection1\n$selection2" error 0 Dismiss
-                return
-            }            
-
-            set atom_numbers_sel1 [$sel1 get serial]
-            set atom_numbers_sel2 [$sel2 get serial]
-            set atom_numbers_subSel1 [$subSel1 get serial]
-            set atom_numbers_subSel2 [$subSel2 get serial] 
-            set counts_yes 0
-            set counts_no 0
-            foreach atom_k $atom_numbers_sel1 {
-                if {(([lsearch -exact $atom_numbers_subSel1 $atom_k] >= 0 )&&([lsearch -exact $atom_numbers_subSel2 $atom_k] >= 0 ))} {
-                    incr atoms_subSel1
-                }
-            }
-            foreach atom_k $atom_numbers_sel2 {
-                if {(([lsearch -exact $atom_numbers_subSel1 $atom_k] >= 0 )&&([lsearch -exact $atom_numbers_subSel2 $atom_k] >= 0 ))} {
-                    incr atoms_subSel2
-                }
-            }
-
-            foreach atom_i $atom_numbers_sel1 {
-                set atom_i_grp [dict get $atoms_groupNames $atom_i]
-                set atom_i_grp [string range $atom_i_grp 1 [expr [string length $atom_i_grp] -2]]
-                foreach atom_j $atom_numbers_sel2 {
-                    if {$atom_i != $atom_j } {
-                        set inSubSelection 0
-                        set atom_j_grp [dict get $atoms_groupNames $atom_j]
-                        set atom_j_grp [string range $atom_j_grp 1 [expr [string length $atom_j_grp] -2]]
-                        set subgrp_pair "\[${atom_i_grp}:${atom_i}\] \[${atom_j_grp}:${atom_j}\]"
-                        set subgrp_pair_reverse "\[${atom_j_grp}:${atom_j}\] \[${atom_i_grp}:${atom_i}\]"
-                        set grp_pair "\[${atom_i_grp}\] \[${atom_j_grp}\]"
-                        set grp_pair_reverse "\[${atom_j_grp}\] \[${atom_i_grp}\]"
-                        if {(([lsearch -exact $atom_numbers_subSel1 $atom_i] >= 0 )&&([lsearch -exact $atom_numbers_subSel2 $atom_j] >= 0 )) || 
-                            (([lsearch -exact $atom_numbers_subSel2 $atom_i] >= 0 )&&([lsearch -exact $atom_numbers_subSel1 $atom_j] >= 0 ))} {
-                            set inSubSelection 1
-                        }
-                        
-                        set counts [dict create]
-                        set hasCounts 0
-                        if { [dict exists $subGroupPair_counts $subgrp_pair] ==1 } then {                       
-                            set counts [dict get $subGroupPair_counts $subgrp_pair]     
-                            set hasCounts 1                                    
-                        } elseif { [dict exists $subGroupPair_counts $subgrp_pair_reverse] ==1 } then {
-                            set counts [dict get $subGroupPair_counts $subgrp_pair_reverse]         
-                            set hasCounts 1
-                        }
-
-                        if {$hasCounts ==1} then {
-                            if { [dict exists $selection_groups_counts $grp_pair] ==1 } then {
-                                dict lappend selection_groups_counts $grp_pair $counts  
-                            } elseif { [dict exists $selection_groups_counts $grp_pair_reverse] ==1 } then {    
-                                dict lappend selection_groups_counts $grp_pair_reverse $counts
-                            } else {
-                                dict lappend selection_groups_counts $grp_pair $counts              
-                            }   
-                            
-                            if { $inSubSelection } then {
-                                if {$rbinRange=="all"} then {
-                                    if {$subselection1!=$subselection2} {
-                                        set subSelectionDistances [expr $subSelectionDistances + [ladd [dict values $counts]]]
-                                    } else {
-                                        set subSelectionDistances [expr $subSelectionDistances + [expr [ladd [dict values $counts]]/2]]
-                                    }
-                                } else {
-                                    set binsOfInterest {}
-                                    set binRanges [split $rbinRange ","]                                
-                                    foreach binRange $binRanges {
-                                        set binIndices [split $binRange "-"]
-                                        if {[llength $binIndices]>1} then {
-                                            set minSelectedR [expr int([expr [lindex $binIndices 0] / $delta])]
-                                            set maxSelectedR [expr int([expr [lindex $binIndices 1] / $delta])]
-                                            for {set b $minSelectedR} {$b <= $maxSelectedR} {incr b} {
-                                                # puts "$b"
-                                                lappend binsOfInterest $b
-                                            }
-                                        } else {
-                                            lappend binsOfInterest [expr int([expr $binIndices / $delta])]
-                                        }
-                                    }    
-
-                                    foreach bin_key [dict keys $counts] {
-                                        if {[lsearch -exact $binsOfInterest $bin_key] >= 0} {
-                                            if {$subselection1!=$subselection2} {
-                                                set subSelectionDistances [expr $subSelectionDistances + [dict values $counts]]
-                                            } else {
-                                                set subSelectionDistances [expr $subSelectionDistances + [expr [dict get $counts $bin_key]/2]]
-                                            }
-                                        }                                    
-                                    }                                
-                                }                                
-                            }           
-                        }               
-                    }
-                }
-            }
-        }
+        set selectionDistances $total_distances_count
         set atoms_sel1 $num_atoms
         set atoms_sel2 $num_atoms
+        set sel1 [atomselect $molid "$selection1"]
+        set sel2 [atomselect $molid "$selection2"]
+        set atom_numbers_sel1 [$sel1 get serial]
+        set atom_numbers_sel2 [$sel2 get serial]
         if {$useNonFFSq} then {
             set selection_atom_contributions $all_atom_contributions    
         } else {
@@ -2077,81 +1910,11 @@ proc ::SQGUI::computeSelections {} {
                 return
             }
         }
-
-        set selection_done 0
-        set customSelections [split $subselection1 ":"]
-        set selStr "serial "
-        foreach c_sel $customSelections {
-            set components [split $c_sel ","]
-            if {[llength $components]<3} then {
-                if {[catch {atomselect $molid "$subselection1"} subSel1]} then {
-                    tk_dialog .errmsg {viewSq Error} "There was an error creating the selections:\n$subselection1" error 0 Dismiss
-                    return
-                }
-                set selection_done 1
-                break
-            } else {
-                set sel_idx 0                    
-                for {set sel_start [lindex $components 0]} {$sel_idx < [lindex $components 2]} {incr sel_start [lindex $components 1]} {
-                    append selStr "$sel_start "
-                    incr sel_idx
-                }
-            }
-        }
-        if {$selection_done==0} {
-            if {[catch {atomselect $molid "$selStr"} subSel1 ]} then {
-                tk_dialog .errmsg {viewSq Error} "There was an error creating the selections:\n$subselection1" error 0 Dismiss
-                return
-            }
-        }
-
-        set selection_done 0
-        set customSelections [split $subselection2 ":"]
-        set selStr "serial "
-        foreach c_sel $customSelections {
-            set components [split $c_sel ","]
-            if {[llength $components]<3} then {
-                if {[catch {atomselect $molid "$subselection2"} subSel2]} then {
-                    tk_dialog .errmsg {viewSq Error} "There was an error creating the selections:\n$subselection2" error 0 Dismiss
-                    return
-                }
-                set selection_done 1
-                break
-            } else {
-                set sel_idx 0                    
-                for {set sel_start [lindex $components 0]} {$sel_idx < [lindex $components 2]} {incr sel_start [lindex $components 1]} {
-                    append selStr "$sel_start "
-                    incr sel_idx
-                }
-            }
-        }
-        if {$selection_done==0} {
-            if {[catch {atomselect $molid "$selStr"} subSel2 ]} then {
-                tk_dialog .errmsg {viewSq Error} "There was an error creating the selections:\n$subselection2" error 0 Dismiss
-                return
-            }
-        }
-        
+   
         set atom_numbers_sel1 [$sel1 get serial]
         set atom_numbers_sel2 [$sel2 get serial]
-        set atom_numbers_subSel1 [$subSel1 get serial]
-        set atom_numbers_subSel2 [$subSel2 get serial]        
-        set counts_yes 0
-        set counts_no 0        
         set atoms_sel1 [llength $atom_numbers_sel1]
         set atoms_sel2 [llength $atom_numbers_sel2]
-        foreach atom_k $atom_numbers_subSel1 {
-            if {([lsearch -exact $atom_numbers_sel1 $atom_k] >= 0)} {
-                incr atoms_subSel1
-            }
-        }
-        foreach atom_k $atom_numbers_subSel2 {
-            if {([lsearch -exact $atom_numbers_sel2 $atom_k] >= 0 )} {
-                incr atoms_subSel2
-            }
-        }
-        printatomCounts $atoms_sel1 $atoms_sel2 $atoms_subSel1 $atoms_subSel2
-
         set counter 1
         set processed_sub_group_pairs {}
 
@@ -2160,7 +1923,6 @@ proc ::SQGUI::computeSelections {} {
         if {$selection1==$selection2} then {
             for {set i 0} {$i < [llength $atom_numbers_sel1]} {incr i} {
                 for {set j [expr $i+1]} {$j < [llength $atom_numbers_sel2]} {incr j} {
-                    set inSubSelection 0
                     set atom_i [lindex $atom_numbers_sel1 $i]
                     set atom_j [lindex $atom_numbers_sel2 $j] 
                     set atom_i_grp [dict get $atoms_groupNames $atom_i]
@@ -2171,11 +1933,6 @@ proc ::SQGUI::computeSelections {} {
                     set subgrp_pair_reverse "\[${atom_j_grp}:${atom_j}\] \[${atom_i_grp}:${atom_i}\]"
                     set grp_pair "\[${atom_i_grp}\] \[${atom_j_grp}\]"
                     set grp_pair_reverse "\[${atom_j_grp}\] \[${atom_i_grp}\]"
-                    if {(([lsearch -exact $atom_numbers_subSel1 $atom_i] >= 0 )&&([lsearch -exact $atom_numbers_subSel2 $atom_j] >= 0 )) || 
-                        (([lsearch -exact $atom_numbers_subSel2 $atom_i] >= 0 )&&([lsearch -exact $atom_numbers_subSel1 $atom_j] >= 0 ))} {
-                        set inSubSelection 1
-                    }
-
                     set counts [dict create]
                     set hasCounts 0
                     if { [dict exists $subGroupPair_counts $subgrp_pair] ==1 } then {                       
@@ -2184,13 +1941,29 @@ proc ::SQGUI::computeSelections {} {
                     } elseif { [dict exists $subGroupPair_counts $subgrp_pair_reverse] ==1 } then {
                         set counts [dict get $subGroupPair_counts $subgrp_pair_reverse]         
                         set hasCounts 1
-                    set hasCounts 0
-                    if { [dict exists $subGroupPair_counts $subgrp_pair] ==1 } then {                       
-                        set counts [dict get $subGroupPair_counts $subgrp_pair]     
-                        set hasCounts 1
-                    } elseif { [dict exists $subGroupPair_counts $subgrp_pair_reverse] ==1 } then {
-                        set counts [dict get $subGroupPair_counts $subgrp_pair_reverse]         
-                        set hasCounts 1
+                        set hasCounts 0
+                        if { [dict exists $subGroupPair_counts $subgrp_pair] ==1 } then {
+                            set counts [dict get $subGroupPair_counts $subgrp_pair]     
+                            set hasCounts 1
+                        } elseif { [dict exists $subGroupPair_counts $subgrp_pair_reverse] ==1 } then {
+                            set counts [dict get $subGroupPair_counts $subgrp_pair_reverse]         
+                            set hasCounts 1
+                        }
+
+                        if {$hasCounts ==1} then {
+                            set selectionDistances [expr $selectionDistances + [ladd [dict values $counts]]]
+                            
+                            if { [dict exists $selection_groups_counts $grp_pair] ==1 } then {
+                                dict lappend selection_groups_counts $grp_pair $counts  
+                            } elseif { [dict exists $selection_groups_counts $grp_pair_reverse] ==1 } then {    
+                                dict lappend selection_groups_counts $grp_pair_reverse $counts
+                            } else {
+                                dict lappend selection_groups_counts $grp_pair $counts              
+                            }
+
+                            dict set selection_atom_contributions $atom_i 0
+                            dict set selection_atom_contributions $atom_j 0     
+                        } 
                     }
 
                     if {$hasCounts ==1} then {
@@ -2206,75 +1979,6 @@ proc ::SQGUI::computeSelections {} {
 
                         dict set selection_atom_contributions $atom_i 0
                         dict set selection_atom_contributions $atom_j 0     
-                        
-                        if { $inSubSelection } then {
-                            if {$rbinRange=="all"} then {
-                                set subSelectionDistances [expr $subSelectionDistances + [ladd [dict values $counts]]]
-                            } else {
-                                set binsOfInterest {}
-                                set binRanges [split $rbinRange ","]                                
-                                foreach binRange $binRanges {
-                                    set binIndices [split $binRange "-"]
-                                    if {[llength $binIndices]>1} then {
-                                        set minSelectedR [expr int([expr [lindex $binIndices 0] / $delta])]
-                                        set maxSelectedR [expr int([expr [lindex $binIndices 1] / $delta])]
-                                        for {set b $minSelectedR} {$b <= $maxSelectedR} {incr b} {                                        
-                                            lappend binsOfInterest $b
-                                        }
-                                    } else {
-                                        lappend binsOfInterest [expr int([expr $binIndices / $delta])]
-                                    }
-                                }
-                                
-                                foreach bin_key [dict keys $counts] {
-                                    if {[lsearch -exact $binsOfInterest $bin_key] >= 0} {                                        
-                                        set subSelectionDistances [expr $subSelectionDistances + [dict values $counts]]
-                                    }                                    
-                                }                                
-                            }  
-                        }           
-                    } }
-
-                    if {$hasCounts ==1} then {
-                        set selectionDistances [expr $selectionDistances + [ladd [dict values $counts]]]
-                        
-                        if { [dict exists $selection_groups_counts $grp_pair] ==1 } then {
-                            dict lappend selection_groups_counts $grp_pair $counts  
-                        } elseif { [dict exists $selection_groups_counts $grp_pair_reverse] ==1 } then {    
-                            dict lappend selection_groups_counts $grp_pair_reverse $counts
-                        } else {
-                            dict lappend selection_groups_counts $grp_pair $counts              
-                        }
-
-                        dict set selection_atom_contributions $atom_i 0
-                        dict set selection_atom_contributions $atom_j 0     
-                        
-                        if { $inSubSelection } then {
-                            if {$rbinRange=="all"} then {
-                                set subSelectionDistances [expr $subSelectionDistances + [ladd [dict values $counts]]]
-                            } else {
-                                set binsOfInterest {}
-                                set binRanges [split $rbinRange ","]                                
-                                foreach binRange $binRanges {
-                                    set binIndices [split $binRange "-"]
-                                    if {[llength $binIndices]>1} then {
-                                        set minSelectedR [expr int([expr [lindex $binIndices 0] / $delta])]
-                                        set maxSelectedR [expr int([expr [lindex $binIndices 1] / $delta])]
-                                        for {set b $minSelectedR} {$b <= $maxSelectedR} {incr b} {                                        
-                                            lappend binsOfInterest $b
-                                        }
-                                    } else {
-                                        lappend binsOfInterest [expr int([expr $binIndices / $delta])]
-                                    }
-                                }
-                                
-                                foreach bin_key [dict keys $counts] {
-                                    if {[lsearch -exact $binsOfInterest $bin_key] >= 0} {                                        
-                                        set subSelectionDistances [expr $subSelectionDistances + [dict values $counts]]
-                                    }                                    
-                                }                                
-                            }  
-                        }           
                     }  
                 }
                 if {[expr $counter%100]==0} {
@@ -2288,18 +1992,13 @@ proc ::SQGUI::computeSelections {} {
                 set atom_i_grp [string range $atom_i_grp 1 [expr [string length $atom_i_grp] -2]]
                 foreach atom_j $atom_numbers_sel2 {
                     if {$atom_i != $atom_j } {
-                        set inSubSelection 0
                         set atom_j_grp [dict get $atoms_groupNames $atom_j]
                         set atom_j_grp [string range $atom_j_grp 1 [expr [string length $atom_j_grp] -2]]
                         set subgrp_pair "\[${atom_i_grp}:${atom_i}\] \[${atom_j_grp}:${atom_j}\]"
                         set subgrp_pair_reverse "\[${atom_j_grp}:${atom_j}\] \[${atom_i_grp}:${atom_i}\]"
                         set grp_pair "\[${atom_i_grp}\] \[${atom_j_grp}\]"
                         set grp_pair_reverse "\[${atom_j_grp}\] \[${atom_i_grp}\]"
-                        if {(([lsearch -exact $atom_numbers_subSel1 $atom_i] >= 0 )&&([lsearch -exact $atom_numbers_subSel2 $atom_j] >= 0 )) || 
-                            (([lsearch -exact $atom_numbers_subSel2 $atom_i] >= 0 )&&([lsearch -exact $atom_numbers_subSel1 $atom_j] >= 0 ))} {
-                            set inSubSelection 1
-                        }
-
+                        
                         set counts [dict create]
                         set hasCounts 0
                         if { [dict exists $subGroupPair_counts $subgrp_pair] ==1 } then {                       
@@ -2329,43 +2028,7 @@ proc ::SQGUI::computeSelections {} {
                             }
 
                             dict set selection_atom_contributions $atom_i 0
-                            dict set selection_atom_contributions $atom_j 0     
-                            
-                            if { $inSubSelection } then {
-                                if {$rbinRange=="all"} then {
-                                    if { ($subselection1!=$subselection2) || ( ($subselection1=="all") && $selection1!=$selection2) } then {
-                                        set subSelectionDistances [expr $subSelectionDistances + [ladd [dict values $counts]]]
-                                    } else {
-                                        set subSelectionDistances [expr $subSelectionDistances + [expr [ladd [dict values $counts]]/2]]
-                                    }
-                                    
-                                } else {
-                                    set binsOfInterest {}
-                                    set binRanges [split $rbinRange ","]                                
-                                    foreach binRange $binRanges {
-                                        set binIndices [split $binRange "-"]
-                                        if {[llength $binIndices]>1} then {
-                                            set minSelectedR [expr int([expr [lindex $binIndices 0] / $delta])]
-                                            set maxSelectedR [expr int([expr [lindex $binIndices 1] / $delta])]
-                                            for {set b $minSelectedR} {$b <= $maxSelectedR} {incr b} {                                        
-                                                lappend binsOfInterest $b
-                                            }
-                                        } else {
-                                            lappend binsOfInterest [expr int([expr $binIndices / $delta])]
-                                        }
-                                    }
-                                    
-                                    foreach bin_key [dict keys $counts] {
-                                        if {[lsearch -exact $binsOfInterest $bin_key] >= 0} {                                        
-                                            if { ($subselection1!=$subselection2) || ( ($subselection1=="all") && $selection1!=$selection2) } then {
-                                                set subSelectionDistances [expr $subSelectionDistances + [dict values $counts]]
-                                            } else {
-                                                set subSelectionDistances [expr $subSelectionDistances + [expr [dict get $counts $bin_key]/2]]
-                                            }
-                                        }                                    
-                                    }                                
-                                }  
-                            }           
+                            dict set selection_atom_contributions $atom_j 0
                         }               
                     }
                 }
@@ -2377,6 +2040,7 @@ proc ::SQGUI::computeSelections {} {
             }
         }
         
+        printatomCounts $atoms_sel1 $atoms_sel2 $atoms_subSel1 $atoms_subSel2
         printdistanceCounts $selectionDistances $subSelectionDistances $all_distances_count
         puts "Calculating atom and neighbor contributions from selections..."
         ### Read the contributions file and create the selection_atom_contributions for ranking, by filtering only the atoms from the selections
@@ -2425,35 +2089,7 @@ proc ::SQGUI::computeSelections {} {
                 }
                 if {$isValid==1} then {
                     dict set selection_atom_contributions $atom_key [list $neighbour_total_contribution {} {}]
-                }
-                
-                # if {[lsearch -exact $required_atoms $atom_key] >= 0} { 
-                #     set neighbour_total_contribution {}
-                #     set startIdx [expr $curIdx +1]
-                #     set curIdx [string first "\{" $line $startIdx ]             
-                #     while {$curIdx > 0} {
-                #         set neighbour_key [string trim [string range $line $startIdx [expr $curIdx-1]]]
-                #         set curEndIdx [string first "\}" $line [expr $curIdx+1] ]  
-                #         if {[lsearch -exact $required_atoms $neighbour_key] >= 0} { 
-                #             set startIdx [expr $curIdx +1]
-                #             set neighbour_Sq [split [string trim [string range $line $startIdx [expr $curEndIdx-1]]] " "]
-                #             if {[llength $neighbour_total_contribution]>0} then {
-                #                 for {set Sq_idx 0} {$Sq_idx < [llength $neighbour_total_contribution]} {incr Sq_idx} {
-                #                     if { [catch {lset neighbour_total_contribution $Sq_idx [expr [lindex $neighbour_Sq $Sq_idx] + [lindex $neighbour_total_contribution $Sq_idx] ] } fid] } {
-                #                         puts "Could add the 2 vectors: $neighbour_Sq ; $neighbour_total_contribution"
-                #                         exit 1
-                #                     }
-                #                     # lset neighbour_total_contribution $Sq_idx [expr [lindex $neighbour_Sq $Sq_idx] + [lindex $neighbour_total_contribution $Sq_idx] ] 
-                #                 }
-                #             } else {
-                #                 set neighbour_total_contribution $neighbour_Sq
-                #             }
-                #         }
-                #         set startIdx [expr $curEndIdx + 1]
-                #         set curIdx [string first "\{" $line $startIdx]                    
-                #     }
-                #     dict set selection_atom_contributions $atom_key [list $neighbour_total_contribution {} {}]
-                # }
+                }                
             }
         }
         close $contributionsFile        
@@ -3135,6 +2771,10 @@ proc ::SQGUI::UpdateRenderer {val} {
     }
 }
 
+proc ::SQGUI::computeRBins {} {
+    puts "Todo: Implement rbin calculations"
+}
+
 #################
 # build GUI.
 proc ::SQGUI::sqgui {args} {    
@@ -3154,7 +2794,7 @@ proc ::SQGUI::sqgui {args} {
     toplevel    $w
     wm title    $w "viewSq" 
     wm iconname $w "SQUI" 
-    wm minsize  $w 700 450 
+    wm minsize  $w 700 500 
 
     # top level dialog components
     # frame for settings
@@ -3163,6 +2803,8 @@ proc ::SQGUI::sqgui {args} {
     button $w.foot -text {Compute S(q)} -command [namespace code runSofQ]
     # frame for selections
     labelframe $w.sel -bd 2 -relief ridge -text "Selections:" -padx 1m -pady 1m
+    # frame for R bin calculations
+    labelframe $w.rbin -bd 2 -relief ridge -text "r bins:" -padx 1m -pady 1m
     # frame for q range
     labelframe $w.in1 -bd 2 -relief ridge -text "q Range Selection:" -padx 1m -pady 1m
     # frame for vis settings
@@ -3170,16 +2812,18 @@ proc ::SQGUI::sqgui {args} {
 
     # layout main canvas
     grid $w.in      -row 0 -column 0 -sticky snew
-    grid $w.foot    -row 1 -column 0 -sticky sew
-    grid $w.sel    -row 2 -column 0 -sticky sew
-    grid $w.in1    -row 3 -column 0 -sticky sew
-    grid $w.in2    -row 4 -column 0 -sticky sew
+    grid $w.foot    -row 1 -column 0 -sticky snew
+    grid $w.sel     -row 2 -column 0 -sticky snew
+    grid $w.rbin    -row 3 -column 0 -sticky snew
+    grid $w.in1     -row 4 -column 0 -sticky snew
+    grid $w.in2     -row 5 -column 0 -sticky snew
     grid columnconfigure $w 0 -minsize 580 -weight 1
     grid rowconfigure    $w 0 -weight 10   -minsize 150
     grid rowconfigure    $w 1 -weight 1    -minsize 25
     grid rowconfigure    $w 2 -weight 1    -minsize 40
-    grid rowconfigure    $w 3 -weight 1    -minsize 50
-    grid rowconfigure    $w 4 -weight 1    -minsize 80
+    grid rowconfigure    $w 3 -weight 1    -minsize 40
+    grid rowconfigure    $w 4 -weight 1    -minsize 50
+    grid rowconfigure    $w 5 -weight 1    -minsize 100
 
     # frame for g(r) settings
     labelframe $w.in.gr_settings -bd 2 -relief ridge -text "g(r) Settings:" -padx 1m -pady 1m
@@ -3324,36 +2968,35 @@ proc ::SQGUI::sqgui {args} {
     set i $w.sel
     label $i.al -text "Selection 1:" 
     entry $i.at -width 20 -textvariable ::SQGUI::selection1
-    label $i.temp -text "  "
     label $i.bl -text "Selection 2:"
     entry $i.bt -width 20 -textvariable ::SQGUI::selection2
-    label $i.al1 -text "Subselection 1:" 
-    entry $i.at1 -width 20 -textvariable ::SQGUI::subselection1
-    label $i.temp2 -text "  "
-    label $i.bl1 -text "Subselection 2:"
-    entry $i.bt1 -width 20 -textvariable ::SQGUI::subselection2
-    label $i.cl1 -text "r-bin(s):"
-    entry $i.ct1 -width 20 -textvariable ::SQGUI::rbinRange
-    label $i.temp3 -text "  "
-    # label $i.temp4 -text "  "
-
-    label $i.al2 -text ""
+    
     radiobutton $i.usenonFF    -text "No Form Factor" -variable ::SQGUI::useNonFFSq  -value "1"
     radiobutton $i.useFF -text "Form Factor" -variable ::SQGUI::useNonFFSq  -value "0"
-    label $i.temp1 -text "  "
-    label $i.temp4 -text "  "
     button $i.computeSel -text {Compute Selections} -command [namespace code computeSelections]
     
-    grid $i.al $i.at $i.bl $i.bt -row 0 -sticky snew
-    grid $i.al1 $i.at1 $i.bl1 $i.bt1 $i.cl1 $i.ct1 $i.temp3 -row 1 -sticky snew
-    grid $i.al2 $i.usenonFF $i.useFF $i.temp1 $i.temp4 $i.computeSel -row 2 -sticky snew
+    grid $i.al $i.at $i.bl $i.bt $i.usenonFF $i.useFF $i.computeSel -row 0 -sticky snew
     grid columnconfigure $i 0 -weight 2
     grid columnconfigure $i 1 -weight 2
     grid columnconfigure $i 2 -weight 2
     grid columnconfigure $i 3 -weight 2
-    grid columnconfigure $i 4 -weight 1
+    grid columnconfigure $i 4 -weight 2
     grid columnconfigure $i 5 -weight 2
-    # grid columnconfigure $i 6 -weight 2
+    grid columnconfigure $i 6 -weight 2
+
+    #################
+    # subdivide and layout the r bins frame
+    set i $w.rbin
+    label $i.cl1 -text "r-bin(s):" -justify "right"
+    entry $i.ct1 -width 20 -textvariable ::SQGUI::rbinRange
+    label $i.temp -text "  "
+    button $i.computerbins -text {Compute r-bins} -command [namespace code computeRBins]
+    
+    grid $i.cl1 $i.ct1 $i.temp $i.computerbins -row 0 -sticky snew
+    grid columnconfigure $i 0 -weight 1
+    grid columnconfigure $i 1 -weight 2
+    grid columnconfigure $i 2 -weight 1
+    grid columnconfigure $i 3 -weight 2
     
     #################
     # subdivide and layout the q range of interest frame
@@ -3580,16 +3223,14 @@ proc ::SQGUI::EnDisable {args} {
         $w.sel.computeSel configure -state disabled
         $w.sel.at configure -state disabled
         $w.sel.bt configure -state disabled
-        $w.sel.at1 configure -state disabled
-        $w.sel.bt1 configure -state disabled
-        $w.sel.ct1 configure -state disabled
+        $w.rbin.ct1 configure -state disabled
+        $w.rbin.computerbins configure -state disabled
     } else {
         $w.sel.computeSel configure -state normal
         $w.sel.at configure -state normal
         $w.sel.bt configure -state normal
-        $w.sel.at1 configure -state normal
-        $w.sel.bt1 configure -state normal
-        $w.sel.ct1 configure -state normal
+        $w.rbin.ct1 configure -state normal
+        $w.rbin.computerbins configure -state normal
     }
 
     # If compute selections is done, we enable the UI controls corresponding to q range sliders.
@@ -3602,9 +3243,7 @@ proc ::SQGUI::EnDisable {args} {
         $w.in2.topNOptionframe.dispatoms configure -state disabled
         $w.in2.topNOptionframe.dispmolecules configure -state disabled
         $w.in2.topNOptionframe.betaRank configure -state disabled
-        $w.in2.topNOptionframe.betaScore configure -state disabled
-        # $w.in2.topNframe.showVis configure -state disabled
-
+        $w.in2.topNOptionframe.betaScore configure -state disabled        
     } else {
         $w.in1.computeRanks configure -state normal
         $w.in1.at configure -state normal
@@ -3619,7 +3258,6 @@ proc ::SQGUI::EnDisable {args} {
         $w.in2.topNOptionframe.dispmolecules configure -state disabled
         $w.in2.topNOptionframe.betaRank configure -state disabled
         $w.in2.topNOptionframe.betaScore configure -state disabled
-        # $w.in2.topNframe.showVis configure -state disabled
 
         $w.in2.topNOptionframe.at1 configure -state disabled
         $w.in2.topNOptionframe.a_cb1 configure -state disabled
@@ -3657,7 +3295,6 @@ proc ::SQGUI::EnDisable {args} {
         $w.in2.topNOptionframe.dispmolecules configure -state normal
         $w.in2.topNOptionframe.betaRank configure -state normal
         $w.in2.topNOptionframe.betaScore configure -state normal
-        # $w.in2.topNframe.showVis configure -state normal
 
         $w.in2.topNOptionframe.at1 configure -state normal
         $w.in2.topNOptionframe.a_cb1 configure -state normal
