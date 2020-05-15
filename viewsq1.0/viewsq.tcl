@@ -12,14 +12,16 @@ namespace eval ::SQGUI:: {
     
     variable selection1    "all";   # selection string for first selection
     variable selection2    "all";   # selection string for second selection
-    variable subselection1 "all";   # sub selection1 for statistics
-    variable subselection2 "all";   # sub selection2 for statistics
+    variable newSelection1 "all";   # new selection1 for statistics
+    variable newSelection2 "all";   # new selection2 for statistics
     variable rbinRange     "all";   # R bins range for statistics
     variable atom_numbers_sel1 "";  # atom numbers in selection 1
     variable atom_numbers_sel2 "";  # atom numbers in selection 2
-    variable useFFSq     0;      # Use non FF weighted S(q) for contributions
-    variable useWhichContribution "total"
+    variable useFFSq     0;         # Whether to use FF weighted S(q) for contributions
+    variable useWhichContribution "total";   # Whether to use total S(q) or positive or negative contributions for atom ranking
     variable showNeighborPlotFlag 0; # stores whether to display top N neighbors plot
+    variable useLorch       0;      # Whether to use Lorch fucntion during S(q) calculations
+    variable lorchC         "10.0"; # Default lorch constant is same as rmax
 
     variable delta      "0.1";      # delta for histogram
     variable rmax      "10.0";      # max r in histogram
@@ -214,7 +216,7 @@ proc ::SQGUI::get_s_q {y_gofr contributions_file_path} {
     set total_S_q_neg_contributions [dict create]
     set adjusted_max_q [expr $max_q + [expr $delta_q / 100]]
 
-    ### add code write the rbin_contributions values to a file (for each q add all rbin_contributions)
+    ### Write the rbin_contributions values to a file (for each q add all rbin_contributions)
     if {[string length $contributions_file_path]} {
         if {[catch {open $contributions_file_path a} fp]} then {
             set got_Error 1
@@ -1709,8 +1711,8 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
 
     set sel1_20 [string range $selection1 0 20]
     set sel2_20 [string range $selection2 0 20]
-    set subsel1_20 [string range $subselection1 0 20]
-    set subsel2_20 [string range $subselection2 0 20]
+    # set subsel1_20 [string range $subselection1 0 20]
+    # set subsel2_20 [string range $subselection2 0 20]
     set counter 1
     set grp_pairs_count [llength [dict keys $counts_dict]]
 
@@ -2160,6 +2162,7 @@ proc ::SQGUI::computeSelections {} {
                             set hasCounts 1
                         }
 
+                        # Keep a running sum of counts for selections
                         if {$hasCounts ==1} then {
                             if {$selection1!=$selection2} {
                                 set selectionDistances [expr $selectionDistances + [ladd [dict values $counts]]]
@@ -2335,7 +2338,9 @@ proc ::SQGUI::DisplayStatsForSelections {} {
     variable atom_beta_by_Score
     variable atom_beta_by_Rank_Sorted
     variable atom_beta_by_Score_Sorted
-    variable display_FormFactorWeighted_Results
+    variable display_FormFactorWeighted_Results 
+    variable useFFSq
+    variable useWhichContribution
 
     variable selection1
     variable selection2
@@ -2366,8 +2371,8 @@ proc ::SQGUI::DisplayStatsForSelections {} {
 
     set sel1_20 [string range $selection1 0 20]
     set sel2_20 [string range $selection2 0 20]
-    set subsel1_20 [string range $subselection1 0 20]
-    set subsel2_20 [string range $subselection2 0 20]
+    # set subsel1_20 [string range $subselection1 0 20]
+    # set subsel2_20 [string range $subselection2 0 20]
     set adjusted_rightBin [expr $rightBin + [expr $delta_q/100]]
     set adjusted_leftBin [expr $leftBin - [expr $delta_q/100]]
     for {set cur_q $min_q} {$cur_q <= $adjusted_rightBin} {set cur_q [expr {$cur_q + $delta_q}]} {
@@ -2427,18 +2432,42 @@ proc ::SQGUI::DisplayStatsForSelections {} {
         $selection_rbins_plot add $rbin_x $ff_s_q_rbin_contributions_selected_range -nolines -fillcolor blue -legend "Form factor weighted S(q)- Full denominator" -marker square -radius 2 -plot
     } 
 
+    set numberOfDecimals 3
+    set roundOffConst [expr pow(10, $numberOfDecimals)]
     set s_q_pos_neg_val_selected_range [expr $s_q_pos_val_selected_range + abs($s_q_neg_val_selected_range)]
-    set s_q_val_selected_range [expr {double(round(100000*$s_q_val_selected_range))/100000}]
-    set s_q_pos_val_selected_range [expr {double(round(100000*$s_q_pos_val_selected_range))/100000}]
-    set s_q_neg_val_selected_range [expr {double(round(100000*$s_q_neg_val_selected_range))/100000}]
-    set s_q_pos_neg_val_selected_range [expr {double(round(100000*$s_q_pos_neg_val_selected_range))/100000}]
+    set s_q_val_selected_range [expr {double(round($roundOffConst*$s_q_val_selected_range))/$roundOffConst}]
+    set s_q_pos_val_selected_range [expr {double(round($roundOffConst*$s_q_pos_val_selected_range))/$roundOffConst}]
+    set s_q_neg_val_selected_range [expr {double(round($roundOffConst*$s_q_neg_val_selected_range))/$roundOffConst}]
+    set s_q_pos_neg_val_selected_range [expr {double(round($roundOffConst*$s_q_pos_neg_val_selected_range))/$roundOffConst}]
 
     set ff_s_q_pos_neg_val_selected_range [expr $ff_s_q_pos_val_selected_range + abs($ff_s_q_neg_val_selected_range)]
-    set ff_s_q_val_selected_range [expr {double(round(100000*$ff_s_q_val_selected_range))/100000}]
-    set ff_s_q_pos_val_selected_range [expr {double(round(100000*$ff_s_q_pos_val_selected_range))/100000}]
-    set ff_s_q_neg_val_selected_range [expr {double(round(100000*$ff_s_q_neg_val_selected_range))/100000}]
-    set ff_s_q_pos_neg_val_selected_range [expr {double(round(100000*$ff_s_q_pos_neg_val_selected_range))/100000}]
-    
+    set ff_s_q_val_selected_range [expr {double(round($roundOffConst*$ff_s_q_val_selected_range))/$roundOffConst}]
+    set ff_s_q_pos_val_selected_range [expr {double(round($roundOffConst*$ff_s_q_pos_val_selected_range))/$roundOffConst}]
+    set ff_s_q_neg_val_selected_range [expr {double(round($roundOffConst*$ff_s_q_neg_val_selected_range))/$roundOffConst}]
+    set ff_s_q_pos_neg_val_selected_range [expr {double(round($roundOffConst*$ff_s_q_pos_neg_val_selected_range))/$roundOffConst}]
+
+    set s_q_contribution_selection 0
+    foreach key [dict keys $selection_atom_contributions] {
+        set key_group [dict get $atoms_groupNames $key]
+        set key_ff [dict get $group_formfactors $key_group]
+        
+        set s_q_contributions [lindex [dict get $selection_atom_contributions $key] 0]
+        set s_q_for_selection 0
+        set q_idx 0
+        
+        if {[llength $s_q_contributions]>0} then {
+            for {set cur_q $min_q} {$cur_q <= $adjusted_rightBin} {set cur_q [expr {$cur_q + $delta_q}]} {
+                if {$cur_q >= $adjusted_leftBin} {
+                    set s_q_for_selection [expr $s_q_for_selection + [lindex $s_q_contributions $q_idx] ]
+                }
+                incr q_idx
+            }
+        }
+        lappend topN_list [list $key $s_q_for_selection $key_group]
+        set s_q_contribution_selection [expr $s_q_contribution_selection + $s_q_for_selection]
+    }
+    set s_q_contribution_selection [expr {double(round($roundOffConst*$s_q_contribution_selection))/$roundOffConst}]
+
     wm title . "Results for Selections" 
     ## destroy the window if already exists. 
     if {[catch { destroy .gui } ]} then {puts "window destroyed!!"}
@@ -2491,24 +2520,26 @@ proc ::SQGUI::DisplayStatsForSelections {} {
     grid $l12 $l13 $l14 
     grid $l12 $l13
 
-    foreach key [dict keys $selection_atom_contributions] {
-        set key_group [dict get $atoms_groupNames $key]
-        set key_ff [dict get $group_formfactors $key_group]
-        
-        set s_q_contributions [lindex [dict get $selection_atom_contributions $key] 0]
-        set s_q_for_selection 0
-        set q_idx 0
-        
-        if {[llength $s_q_contributions]>0} then {
-            for {set cur_q $min_q} {$cur_q <= $adjusted_rightBin} {set cur_q [expr {$cur_q + $delta_q}]} {
-                if {$cur_q >= $adjusted_leftBin} {
-                    set s_q_for_selection [expr $s_q_for_selection + [lindex $s_q_contributions $q_idx] ]
-                }
-                incr q_idx
-            }
-        }
-        lappend topN_list [list $key $s_q_for_selection $key_group]
+    set labelText ""
+    if {$useWhichContribution=="positive"} then {
+        set labelText "Selected Positive Contribution:"
+    } elseif {$useWhichContribution=="negative"} then {
+        set labelText "Selected Negative Contribution:"
+    } else {
+        set labelText "Selected Total Contribution:"
+    } 
+    set l15 [label $cur_UI.lable_selected_contribution -text $labelText -justify right -font {helvetica 12 bold}]
+    
+    if {$useFFSq} then {
+        set l16 [label $cur_UI.lable_selected_contribution_val1 -text " " -justify left -font {helvetica 12 bold}]
+        set l17 [label $cur_UI.lable_selected_contribution_val2 -text $s_q_contribution_selection -justify left -font {helvetica 12 bold}]
+    } else {
+        set l16 [label $cur_UI.lable_selected_contribution_val1 -text $s_q_contribution_selection -justify left -font {helvetica 12 bold}]
+        set l17 [label $cur_UI.lable_selected_contribution_val2 -text " " -justify left -font {helvetica 12 bold}]
     }
+    
+    grid $l15 $l16 $l17 
+    grid $l15 $l16
 
     set topN_Sorted [lsort -real -index 1 -decreasing $topN_list]    
     set cntr 0
@@ -2932,7 +2963,92 @@ proc ::SQGUI::UpdateRenderer {val} {
 }
 
 proc ::SQGUI::computeRBins {} {
-    puts "Todo: Implement rbin calculations"
+
+    global subGroupPair_counts
+    global atoms_groupNames 
+
+    variable newSelection1
+    variable newSelection2
+    variable rbinRange
+    variable delta
+    variable molid
+    variable rmax
+
+    set sel1 {}
+    set sel2 {}
+
+    # Check if the r-bin atom selections are valid and if so, process them
+    if {[catch {atomselect $molid "$newSelection1"} sel1]} then {
+        tk_dialog .errmsg {viewSq Error} "There was an error creating the selections:\n$newSelection1" error 0 Dismiss
+        return
+    }
+    if {[catch {atomselect $molid "$newSelection2"} sel2]} then {
+        tk_dialog .errmsg {viewSq Error} "There was an error creating the selections:\n$newSelection2" error 0 Dismiss
+        return
+    }
+
+    # Get atom numbers from each r-bin atom selection
+    set atom_numbers_sel1 [$sel1 get serial]
+    set atom_numbers_sel2 [$sel2 get serial]
+
+    # Process the r-bins of interest
+    # Expected input format:
+    #   "," separated combination of a single r value or a range of r vlaues specified using "-"
+    #   Examples: 0.1-0.5,0.7,0.8,1.4-19
+    #             0.1,0.5,0.7,0.9,1.4,1.7
+    #             0.5-1.7,1.9-2.8
+    # Result: "binsOfInterest" - a list of all r-bin indices to be included in calculations
+    #   Example: If input is 0.1-0.4,1.5,1.9-2.1, binsOfInterest={1,2,3,4,15,19,20,21}
+    set binsOfInterest {}
+    if {$rbinRange=="all"} then {
+        set minSelectedR [expr round([expr 0 / $delta])]
+        set maxSelectedR [expr round([expr $rmax / $delta])]
+        for {set b $minSelectedR} {$b < $maxSelectedR} {incr b} {
+            lappend binsOfInterest $b
+        }
+    } else {        
+        set binRanges [split $rbinRange ","]                                
+        foreach binRange $binRanges {
+            set binIndices [split $binRange "-"]
+            if {[llength $binIndices]>1} then {
+                set minSelectedR [expr round([expr [lindex $binIndices 0] / $delta])]
+                set maxSelectedR [expr round([expr [lindex $binIndices 1] / $delta])]
+                for {set b $minSelectedR} {$b <= $maxSelectedR} {incr b} {
+                    lappend binsOfInterest $b
+                }
+            } else {
+                lappend binsOfInterest [expr round([expr $binIndices / $delta])]
+            }
+        }
+    }
+
+    # subGroupPair_counts - Dictionary that contains bins and corresponding counts for any atom pair.
+    #   Key format: [<element type from ndx file>:<atom number>] [<element type from ndx file>:<atom number>]
+    #       Example keys: [H:1] [H:12], [H:1] [O:20]
+    #   Value format: {<bin number> <distance count> <bin number> <distance count> ...} only for all non zero count bins 
+    #       Example value: {{10 500}{11 200}}
+
+    ### Refer to ProcessAllsubGroupPairs method for using subGroupPair_counts dictionary
+
+    # foreach subgrp_pair [dict keys $subGroupPair_counts] {
+    #     puts "$subgrp_pair :: [dict get $subGroupPair_counts $subgrp_pair]"
+    #     break
+    # }
+
+    ### Dictionary with atom numbers as keys and element type as value.
+    # $atoms_groupNames
+
+    ### To search for counts of any given pari of atoms say 1, 12:
+    ### 1. Search for element types of 1 and 12 in atoms_groupNames
+    ### 2. Do string concatenations to create the key in the format of [H:1] [H:12]
+    set atom_i 1
+    set atom_j 12
+    set ele_i [dict get $atoms_groupNames $atom_i]
+    set ele_i [string range $ele_i 1 [expr [string length $ele_i] -2]]
+    set ele_j [dict get $atoms_groupNames $atom_j]
+    set ele_j [string range $ele_j 1 [expr [string length $ele_j] -2]]
+    set searchKey "\[${ele_i}:${atom_i}\] \[${ele_j}:${atom_j}\]"                    
+    # set atomPairCount [dict get $subGroupPair_counts $searchKey]
 }
 
 #################
@@ -2973,8 +3089,8 @@ proc ::SQGUI::sqgui {args} {
     # layout main canvas
     grid $w.in      -row 0 -column 0 -sticky snew
     grid $w.foot    -row 1 -column 0 -sticky snew
-    grid $w.sel     -row 2 -column 0 -sticky snew
-    grid $w.rbin    -row 3 -column 0 -sticky snew
+    grid $w.rbin    -row 2 -column 0 -sticky snew
+    grid $w.sel     -row 3 -column 0 -sticky snew
     grid $w.in1     -row 4 -column 0 -sticky snew
     grid $w.in2     -row 5 -column 0 -sticky snew
     grid columnconfigure $w 0 -minsize 580 -weight 1
@@ -3105,23 +3221,26 @@ proc ::SQGUI::sqgui {args} {
     # subdivide and layout the S(q) settings frame
     set i $w.in.sq_settings
     label $i.minQ -text "Min q \[Å\u207B\u2071\]:" 
-    entry $i.minQt -width 15 -textvariable ::SQGUI::min_q
-    label $i.temp1 -text "  "
+    entry $i.minQt -width 10 -textvariable ::SQGUI::min_q
     label $i.maxQ -text "Max q \[Å\u207B\u2071\]:"
-    entry $i.maxQt -width 15 -textvariable ::SQGUI::max_q
-    label $i.temp2 -text "  "
+    entry $i.maxQt -width 10 -textvariable ::SQGUI::max_q
     label $i.deltaQ -text "Delta q \[Å\u207B\u2071\]:"
-    entry $i.deltaQt -width 15 -textvariable ::SQGUI::delta_q
+    entry $i.deltaQt -width 10 -textvariable ::SQGUI::delta_q
+    checkbutton $i.useLorch -text "Use Lorch" -variable ::SQGUI::useLorch
+    $i.useLorch deselect
+    label $i.lblLorchC -text "Lorch Constant:"
+    entry $i.lorchC -width 10 -textvariable ::SQGUI::lorchC
 
-    grid  $i.minQ $i.minQt $i.temp1 $i.maxQ $i.maxQt $i.temp2 $i.deltaQ $i.deltaQt  -row 0 -sticky snew
+    grid  $i.minQ $i.minQt $i.maxQ $i.maxQt $i.deltaQ $i.deltaQt $i.useLorch $i.lblLorchC $i.lorchC -row 0 -sticky snew
     grid columnconfigure $i 0 -weight 2
     grid columnconfigure $i 1 -weight 2
-    grid columnconfigure $i 2 -weight 1
+    grid columnconfigure $i 2 -weight 2 
     grid columnconfigure $i 3 -weight 2
     grid columnconfigure $i 4 -weight 2
-    grid columnconfigure $i 5 -weight 1
+    grid columnconfigure $i 5 -weight 2
     grid columnconfigure $i 6 -weight 2
     grid columnconfigure $i 7 -weight 2
+    grid columnconfigure $i 8 -weight 2
 
     #################
     # subdivide and layout the Selections frame
@@ -3153,16 +3272,22 @@ proc ::SQGUI::sqgui {args} {
     #################
     # subdivide and layout the r bins frame
     set i $w.rbin
-    label $i.cl1 -text "r-bin(s):" -justify "right"
-    entry $i.ct1 -width 20 -textvariable ::SQGUI::rbinRange
-    label $i.temp -text "  "
+    label $i.l1 -text "selection 1" -justify "right"
+    entry $i.t1 -width 20 -textvariable ::SQGUI::newSelection1
+    label $i.l2 -text "selection 2" -justify "right"
+    entry $i.t2 -width 20 -textvariable ::SQGUI::newSelection2
+    label $i.l3 -text "r-bin(s):" -justify "right"
+    entry $i.t3 -width 20 -textvariable ::SQGUI::rbinRange
     button $i.computerbins -text {Compute r-bins} -command [namespace code computeRBins]
     
-    grid $i.cl1 $i.ct1 $i.temp $i.computerbins -row 0 -sticky snew
+    grid $i.l1 $i.t1 $i.l2 $i.t2 $i.l3 $i.t3 $i.computerbins -row 0 -sticky snew
     grid columnconfigure $i 0 -weight 1
     grid columnconfigure $i 1 -weight 2
     grid columnconfigure $i 2 -weight 1
     grid columnconfigure $i 3 -weight 2
+    grid columnconfigure $i 4 -weight 1
+    grid columnconfigure $i 5 -weight 2
+    grid columnconfigure $i 6 -weight 1
     
     #################
     # subdivide and layout the q range of interest frame
@@ -3390,13 +3515,25 @@ proc ::SQGUI::EnDisable {args} {
         $w.sel.computeSel configure -state disabled
         $w.sel.at configure -state disabled
         $w.sel.bt configure -state disabled
-        $w.rbin.ct1 configure -state disabled
+        $w.sel.useFF configure -state disabled
+        $w.sel.useSq configure -state disabled
+        $w.sel.usePosSq configure -state disabled
+        $w.sel.useNegSq configure -state disabled
+        $w.rbin.t1 configure -state disabled
+        $w.rbin.t2 configure -state disabled
+        $w.rbin.t3 configure -state disabled
         $w.rbin.computerbins configure -state disabled
     } else {
         $w.sel.computeSel configure -state normal
         $w.sel.at configure -state normal
         $w.sel.bt configure -state normal
-        $w.rbin.ct1 configure -state normal
+        $w.sel.useFF configure -state normal
+        $w.sel.useSq configure -state normal
+        $w.sel.usePosSq configure -state normal
+        $w.sel.useNegSq configure -state normal
+        $w.rbin.t1 configure -state normal
+        $w.rbin.t2 configure -state normal
+        $w.rbin.t3 configure -state normal
         $w.rbin.computerbins configure -state normal
     }
 
@@ -3425,6 +3562,7 @@ proc ::SQGUI::EnDisable {args} {
         $w.in2.topNOptionframe.dispmolecules configure -state disabled
         $w.in2.topNOptionframe.betaRank configure -state disabled
         $w.in2.topNOptionframe.betaScore configure -state disabled
+        $w.in2.topNframe.showNeighborRankingRankingPlot configure -state disabled
 
         $w.in2.topNOptionframe.at1 configure -state disabled
         $w.in2.topNOptionframe.a_cb1 configure -state disabled
@@ -3462,6 +3600,7 @@ proc ::SQGUI::EnDisable {args} {
         $w.in2.topNOptionframe.dispmolecules configure -state normal
         $w.in2.topNOptionframe.betaRank configure -state normal
         $w.in2.topNOptionframe.betaScore configure -state normal
+        $w.in2.topNframe.showNeighborRankingRankingPlot configure -state normal
 
         $w.in2.topNOptionframe.at1 configure -state normal
         $w.in2.topNOptionframe.a_cb1 configure -state normal
