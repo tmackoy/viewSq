@@ -17,7 +17,8 @@ namespace eval ::SQGUI:: {
     variable rbinRange     "all";   # R bins range for statistics
     variable atom_numbers_sel1 "";  # atom numbers in selection 1
     variable atom_numbers_sel2 "";  # atom numbers in selection 2
-    variable useNonFFSq     1;      # Use non FF weighted S(q) for contributions
+    variable useFFSq     0;      # Use non FF weighted S(q) for contributions
+    variable useWhichContribution "total"
     variable showNeighborPlotFlag 0; # stores whether to display top N neighbors plot
 
     variable delta      "0.1";      # delta for histogram
@@ -114,8 +115,6 @@ namespace eval ::SQGUI:: {
     set all_atoms_counts [dict create];                         # Stores counts for each atom in the input file
     set possible_sq_contributions {};                           # Stores the S(q) values and positive and negative contributions to s(q) at each q for a count 1 at all possible bins.
     set possible_sq_contribution_differences {};                # Stores the difference in S(q)values and positive and negative contributions to s(q) at each q for a difference of 1 in count at all possible bins.
-    set all_atom_contributions [dict create];                   # Stores for all atoms, each atom and its contribution to S(q), positive and negative components of S(q)
-    set all_atom_contributions_ff [dict create];                # Stores for all atoms, each atom and its contribution to ff weighted S(q), positive and negative components of ff weighted S(q)
     set selection_atom_contributions [dict create];             # Stores for all atoms in the selection, each atom and its contribution to S(q), positive and negative components of S(q)
 
     set all_same_elements_weights {};               # store weights of all homogenous element pairs
@@ -1154,8 +1153,6 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
     global groupPair_formfactors 
     global all_atoms_counts
     global possible_sq_contributions
-    global all_atom_contributions
-    global all_atom_contributions_ff
     global possible_sq_contribution_differences
     global selection_groups_weights_all_denominator
 
@@ -1165,21 +1162,32 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
     set all_same_group_pair_formfactors {}
     set all_atoms_counts [dict create]
     set all_atoms_counts_by_group [dict create]
-    set all_atom_contributions [dict create]
-    set all_atom_contributions_ff [dict create] 
     set selection_groups_weights_all_denominator [dict create]
     set unit_sofqs [dict create]
     set unit_sofqs_ff [dict create]
-    set write_to_file 0    
-    set fp {}    
-    set fp1 {}   
+    set unit_sofqs_pos [dict create]
+    set unit_sofqs_ff_pos [dict create]
+    set unit_sofqs_neg [dict create]
+    set unit_sofqs_ff_neg [dict create]
+    set write_to_file 0
+    set fp {}
+    set fp1 {}
+    set p_fp {}
+    set p_fp1 {}
+    set n_fp {}
+    set n_fp1 {}
 
     variable all_distances_count
     variable auto_call
     variable input_file_path
+    variable useWhichContribution
 
     set neighbour_contributions_file $input_file_path
     set neighbour_ff_contributions_file $input_file_path
+    set neighbour_pos_contributions_file $input_file_path
+    set neighbour_pos_ff_contributions_file $input_file_path
+    set neighbour_neg_contributions_file $input_file_path
+    set neighbour_neg_ff_contributions_file $input_file_path
     set write_to_file 0
 
     # Create a file that stores S(q) contributions of an atom from each of the neighbours.
@@ -1189,6 +1197,7 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
     append neighbour_contributions_file "neighbour_contributions_sq.dat"
     if {[catch {open $neighbour_contributions_file w} fp]} then {
         set got_Error 1
+        set write_to_file 0
         tk_dialog .errmsg {viewSq Error} "There was an error opening the file '$neighbour_contributions_file'" error 0 Dismiss
     } else {
         set write_to_file 1     
@@ -1199,6 +1208,42 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
         set got_Error 1
         set write_to_file 0
         tk_dialog .errmsg {viewSq Error} "There was an error opening the file '$neighbour_ff_contributions_file'" error 0 Dismiss
+    } else {
+        set write_to_file 1     
+    } 
+
+    append neighbour_pos_contributions_file "neighbour_positive_contributions_sq.dat"
+    if {[catch {open $neighbour_pos_contributions_file w} p_fp]} then {
+        set got_Error 1
+        set write_to_file 0
+        tk_dialog .errmsg {viewSq Error} "There was an error opening the file '$neighbour_pos_contributions_file'" error 0 Dismiss
+    } else {
+        set write_to_file 1     
+    }
+
+    append neighbour_pos_ff_contributions_file "neighbour_positive_contributions_ff_sq.dat"
+    if {[catch {open $neighbour_pos_ff_contributions_file w} p_fp1]} then {
+        set got_Error 1
+        set write_to_file 0
+        tk_dialog .errmsg {viewSq Error} "There was an error opening the file '$neighbour_pos_ff_contributions_file'" error 0 Dismiss
+    } else {
+        set write_to_file 1     
+    } 
+
+    append neighbour_neg_contributions_file "neighbour_negative_contributions_sq.dat"
+    if {[catch {open $neighbour_neg_contributions_file w} n_fp]} then {
+        set got_Error 1
+        set write_to_file 0
+        tk_dialog .errmsg {viewSq Error} "There was an error opening the file '$neighbour_neg_contributions_file'" error 0 Dismiss
+    } else {
+        set write_to_file 1     
+    }
+
+    append neighbour_neg_ff_contributions_file "neighbour_negative_contributions_ff_sq.dat"
+    if {[catch {open $neighbour_neg_ff_contributions_file w} n_fp1]} then {
+        set got_Error 1
+        set write_to_file 0
+        tk_dialog .errmsg {viewSq Error} "There was an error opening the file '$neighbour_neg_ff_contributions_file'" error 0 Dismiss
     } else {
         set write_to_file 1     
     }    
@@ -1316,10 +1361,17 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
         # Get the magnitude of S(q) at each q and divide it by total count to get S(q) per unit
         if {[lindex $bin_totals $bin_i]>0} then {
             set sofq_per_unit {}
-            foreach sofq $y_partial_sofq {
-                lappend sofq_per_unit [expr $sofq / [lindex $bin_totals $bin_i]]
+            set sofq_pos_per_unit {}
+            set sofq_neg_per_unit {}
+            for {set i 0} {$i < [llength $y_partial_sofq]} {incr i} {
+                lappend sofq_per_unit [expr [lindex $y_partial_sofq $i] / [lindex $bin_totals $bin_i]]
+                lappend sofq_pos_per_unit [expr [lindex $s_q_pos_contributions $i] / [lindex $bin_totals $bin_i]]
+                lappend sofq_neg_per_unit [expr [lindex $s_q_neg_contributions $i] / [lindex $bin_totals $bin_i]]
             }
             dict append unit_sofqs $bin_i $sofq_per_unit
+            dict append unit_sofqs_pos $bin_i $sofq_pos_per_unit
+            dict append unit_sofqs_neg $bin_i $sofq_neg_per_unit
+
         }
 
         foreach pair_key [dict keys $allPairsAggregated_counts] {
@@ -1344,23 +1396,40 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
             set weighted_partial_sofq_result [get_formfactor_weighted_partial_s_q_with_contributions $y_partial_gofr $cur_pair_weight $cur_pair_formfactor_list]
 
             set y_partial_sofq [lindex $weighted_partial_sofq_result 0] 
-            # set s_q_pos_contributions [lindex $partial_sofq_result 1] 
-            # set s_q_neg_contributions [lindex $partial_sofq_result 2] 
+            set s_q_pos_contributions [lindex $weighted_partial_sofq_result 1] 
+            set s_q_neg_contributions [lindex $weighted_partial_sofq_result 2] 
 
             # Get the magnitude of S(q) at each q and divide it by total count to get S(q) per unit
             if {[dict exists $cur_pair_totals $bin_i]} then {
                 set sofq_per_unit {}
-                foreach sofq $y_partial_sofq {
-                    lappend sofq_per_unit [expr $sofq / $cur_pair_bin_total]
+                set sofq_pos_per_unit {}
+                set sofq_neg_per_unit {}
+                for {set i 0} {$i < [llength $y_partial_sofq]} {incr i} {
+                    lappend sofq_per_unit [expr [lindex $y_partial_sofq $i] / $cur_pair_bin_total]
+                    lappend sofq_pos_per_unit [expr [lindex $s_q_pos_contributions $i] / $cur_pair_bin_total]
+                    lappend sofq_neg_per_unit [expr [lindex $s_q_neg_contributions $i] / $cur_pair_bin_total]
                 }
-
                 if {[dict exists $unit_sofqs_ff $pair_key]} then {
                     set bin_cintribs_so_far [dict get $unit_sofqs_ff $pair_key]
                     dict append bin_cintribs_so_far $bin_i $sofq_per_unit
                     dict set unit_sofqs_ff $pair_key $bin_cintribs_so_far
+
+                    set bin_cintribs_so_far [dict get $unit_sofqs_ff_pos $pair_key]
+                    dict append bin_cintribs_so_far $bin_i $sofq_pos_per_unit
+                    dict set unit_sofqs_ff_pos $pair_key $bin_cintribs_so_far
+
+                    set bin_cintribs_so_far [dict get $unit_sofqs_ff_neg $pair_key]
+                    dict append bin_cintribs_so_far $bin_i $sofq_neg_per_unit
+                    dict set unit_sofqs_ff_neg $pair_key $bin_cintribs_so_far
                 } else {
                     dict set cur_bin_Sq $bin_i $sofq_per_unit
                     dict append unit_sofqs_ff $pair_key $cur_bin_Sq 
+
+                    dict set cur_bin_Sq $bin_i $sofq_pos_per_unit
+                    dict append unit_sofqs_ff_pos $pair_key $cur_bin_Sq 
+
+                    dict set cur_bin_Sq $bin_i $sofq_neg_per_unit
+                    dict append unit_sofqs_ff_neg $pair_key $cur_bin_Sq 
                 }
                 
             }
@@ -1419,14 +1488,21 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
         set sqy_pos {}
         set sqy_neg {}
         set cur_atom_neighbours_contributions [dict create]  
-        set cur_atom_neighbours_ff_contributions [dict create]        
+        set cur_atom_neighbours_ff_contributions [dict create] 
+        set cur_atom_neighbours_pos_contributions [dict create]  
+        set cur_atom_neighbours_ff_pos_contributions [dict create] 
+        set cur_atom_neighbours_neg_contributions [dict create]  
+        set cur_atom_neighbours_ff_neg_contributions [dict create]        
         foreach bin_i [dict keys $cur_atom_counts_dict] {            
             set cur_bin_neighbour_counts [dict get $cur_atom_counts_dict $bin_i]
 
             set contribution_for_cur_bin [dict get $unit_sofqs $bin_i]
+            set pos_contribution_for_cur_bin [dict get $unit_sofqs_pos $bin_i]
+            set neg_contribution_for_cur_bin [dict get $unit_sofqs_neg $bin_i]
             foreach neighbour [dict keys $cur_bin_neighbour_counts] {  
                 set atom_pair_key ""
                 set cur_neighbor_type [dict get $atoms_groupNames "$neighbour"]
+                set cur_bin_cur_neighbour_count [dict get $cur_bin_neighbour_counts $neighbour]
                 set possible_pair "$cur_atom_type $cur_neighbor_type"
                 set possible_pair_reverse "$cur_neighbor_type $cur_atom_type"
                 if { [dict exists $allPairsAggregated_counts $possible_pair] ==1 } then {
@@ -1436,93 +1512,93 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
                 } 
 
                 # Calculate the current neighbour contribution using its count and unit S(q).  
-                set neighbour_contribution_for_cur_bin {}              
-                foreach cur_unit_sofq $contribution_for_cur_bin {
-                    lappend neighbour_contribution_for_cur_bin [expr [dict get $cur_bin_neighbour_counts $neighbour] * $cur_unit_sofq]
+                set neighbour_contribution_for_cur_bin {}
+                set neighbour_pos_contribution_for_cur_bin {}
+                set neighbour_neg_contribution_for_cur_bin {} 
+                for {set i 0} {$i < [llength $contribution_for_cur_bin]} {incr i} {
+                    lappend neighbour_contribution_for_cur_bin [expr $cur_bin_cur_neighbour_count * [lindex $contribution_for_cur_bin $i]]
+                    lappend neighbour_pos_contribution_for_cur_bin [expr $cur_bin_cur_neighbour_count * [lindex $pos_contribution_for_cur_bin $i]]
+                    lappend neighbour_neg_contribution_for_cur_bin [expr $cur_bin_cur_neighbour_count * [lindex $neg_contribution_for_cur_bin $i]]
                 }
-
                 set contribution_for_cur_pair [dict get $unit_sofqs_ff $atom_pair_key]
+                set pos_contribution_for_cur_pair [dict get $unit_sofqs_ff_pos $atom_pair_key]
+                set neg_contribution_for_cur_pair [dict get $unit_sofqs_ff_neg $atom_pair_key]
                 if {[dict exists $contribution_for_cur_pair $bin_i] ==1} {
                     # Calculate the current neighbour ff weighted contribution using its count and ff weighted unit S(q).  
-                    set neighbour_contribution_for_cur_bin_ff {}  
-                    set contribution_for_cur_pair_cur_bin [dict get $contribution_for_cur_pair $bin_i]          
-                    foreach cur_unit_sofq $contribution_for_cur_pair_cur_bin {
-                        # puts "$atom_pair_key  $bin_i  $cur_unit_sofq"
-                        lappend neighbour_contribution_for_cur_bin_ff [expr [dict get $cur_bin_neighbour_counts $neighbour] * $cur_unit_sofq]
-                    }
+                    set neighbour_contribution_for_cur_bin_ff {}
+                    set neighbour_pos_contribution_for_cur_bin_ff {}
+                    set neighbour_neg_contribution_for_cur_bin_ff {}  
+                    set contribution_for_cur_pair_cur_bin [dict get $contribution_for_cur_pair $bin_i] 
+                    set pos_contribution_for_cur_pair_cur_bin [dict get $pos_contribution_for_cur_pair $bin_i] 
+                    set neg_contribution_for_cur_pair_cur_bin [dict get $neg_contribution_for_cur_pair $bin_i]    
 
+                    for {set i 0} {$i < [llength $contribution_for_cur_pair_cur_bin]} {incr i} {
+                        lappend neighbour_contribution_for_cur_bin_ff [expr $cur_bin_cur_neighbour_count * [lindex $contribution_for_cur_pair_cur_bin $i]]
+                        lappend neighbour_pos_contribution_for_cur_bin_ff [expr $cur_bin_cur_neighbour_count * [lindex $pos_contribution_for_cur_pair_cur_bin $i]]
+                        lappend neighbour_neg_contribution_for_cur_bin_ff [expr $cur_bin_cur_neighbour_count * [lindex $neg_contribution_for_cur_pair_cur_bin $i]]
+                    }
                     # keep the running total contribution of an atom from its neighbours contributions.
                     if {[dict exists $cur_atom_neighbours_ff_contributions $neighbour]} then {
-                        set neighbour_existing_ff_contribution [dict get $cur_atom_neighbours_ff_contributions $neighbour]
-                        for {set q 0} {$q < [llength $neighbour_existing_ff_contribution]} {incr q} {
-                            lset neighbour_existing_ff_contribution $q [expr [lindex $neighbour_existing_ff_contribution $q] + [lindex $neighbour_contribution_for_cur_bin_ff $q]]
+                        set existing_ff_contribution [dict get $cur_atom_neighbours_ff_contributions $neighbour]
+                        for {set q 0} {$q < [llength $existing_ff_contribution]} {incr q} {
+                            lset existing_ff_contribution $q [expr [lindex $existing_ff_contribution $q] + [lindex $neighbour_contribution_for_cur_bin_ff $q]]
                         }
-                        dict set cur_atom_neighbours_ff_contributions $neighbour $neighbour_existing_ff_contribution
+                        dict set cur_atom_neighbours_ff_contributions $neighbour $existing_ff_contribution
+
+                        set existing_ff_pos_contribution [dict get $cur_atom_neighbours_ff_pos_contributions $neighbour]
+                        for {set q 0} {$q < [llength $existing_ff_pos_contribution]} {incr q} {
+                            lset existing_ff_pos_contribution $q [expr [lindex $existing_ff_pos_contribution $q] + [lindex $neighbour_pos_contribution_for_cur_bin_ff $q]]
+                        }
+                        dict set cur_atom_neighbours_ff_pos_contributions $neighbour $existing_ff_pos_contribution
+
+                        set existing_ff_neg_contribution [dict get $cur_atom_neighbours_ff_neg_contributions $neighbour]
+                        for {set q 0} {$q < [llength $existing_ff_neg_contribution]} {incr q} {
+                            lset existing_ff_neg_contribution $q [expr [lindex $existing_ff_neg_contribution $q] + [lindex $neighbour_neg_contribution_for_cur_bin_ff $q]]
+                        }
+                        dict set cur_atom_neighbours_ff_neg_contributions $neighbour $existing_ff_neg_contribution
                     } else {
                         dict set cur_atom_neighbours_ff_contributions $neighbour $neighbour_contribution_for_cur_bin_ff
+                        dict set cur_atom_neighbours_ff_pos_contributions $neighbour $neighbour_pos_contribution_for_cur_bin_ff
+                        dict set cur_atom_neighbours_ff_neg_contributions $neighbour $neighbour_neg_contribution_for_cur_bin_ff
                     } 
                 }
 
                 # keep the running total contribution of an atom from its neighbours contributions.
                 if {[dict exists $cur_atom_neighbours_contributions $neighbour]} then {
-                    set neighbour_existing_contribution [dict get $cur_atom_neighbours_contributions $neighbour]
-                    for {set q 0} {$q < [llength $neighbour_existing_contribution]} {incr q} {
-                        lset neighbour_existing_contribution $q [expr [lindex $neighbour_existing_contribution $q] + [lindex $neighbour_contribution_for_cur_bin $q]]
+                    set existing_contribution [dict get $cur_atom_neighbours_contributions $neighbour]
+                    for {set q 0} {$q < [llength $existing_contribution]} {incr q} {
+                        lset existing_contribution $q [expr [lindex $existing_contribution $q] + [lindex $neighbour_contribution_for_cur_bin $q]]
                     }
-                    dict set cur_atom_neighbours_contributions $neighbour $neighbour_existing_contribution
+                    dict set cur_atom_neighbours_contributions $neighbour $existing_contribution
+
+                    set existing_pos_contribution [dict get $cur_atom_neighbours_pos_contributions $neighbour]
+                    for {set q 0} {$q < [llength $existing_pos_contribution]} {incr q} {
+                        lset existing_pos_contribution $q [expr [lindex $existing_pos_contribution $q] + [lindex $neighbour_pos_contribution_for_cur_bin $q]]
+                    }
+                    dict set cur_atom_neighbours_pos_contributions $neighbour $existing_pos_contribution
+
+                    set existing_neg_contribution [dict get $cur_atom_neighbours_neg_contributions $neighbour]
+                    for {set q 0} {$q < [llength $existing_neg_contribution]} {incr q} {
+                        lset existing_neg_contribution $q [expr [lindex $existing_neg_contribution $q] + [lindex $neighbour_neg_contribution_for_cur_bin $q]]
+                    }
+                    dict set cur_atom_neighbours_neg_contributions $neighbour $existing_neg_contribution
                 } else {
                     dict set cur_atom_neighbours_contributions $neighbour $neighbour_contribution_for_cur_bin
+                    dict set cur_atom_neighbours_pos_contributions $neighbour $neighbour_pos_contribution_for_cur_bin
+                    dict set cur_atom_neighbours_neg_contributions $neighbour $neighbour_neg_contribution_for_cur_bin
                 }
             }
         }
 
         # write the neighbours contributions to the current atom to the file.
         if {$write_to_file == 1} then {
-            # puts "writing to file..."
-            set atom_contribution {}
-            set atom_contribution_ff {}
-            set out_line $atom
-            set out_line_ff $atom
-            append out_line " {"
-            append out_line_ff " {"
-            foreach neighbour [dict keys $cur_atom_neighbours_contributions] {
-                set new_sofq [dict get $cur_atom_neighbours_contributions $neighbour]
-                if {[llength $atom_contribution]==0} then {                         
-                    set atom_contribution $new_sofq
-                } else {
-                    for {set q 0} {$q < [llength $atom_contribution]} {incr q} {
-                        lset atom_contribution $q [expr [lindex $atom_contribution $q] + [lindex $new_sofq $q]]
-                    }
-                } 
-                append out_line $neighbour
-                append out_line " {"
-                append out_line [join $new_sofq " "]  
-                append out_line "} "                      
-            }
-            append out_line "}" 
-
-            puts $fp $out_line
-
-            foreach neighbour [dict keys $cur_atom_neighbours_ff_contributions ] {
-                set new_sofq [dict get $cur_atom_neighbours_ff_contributions $neighbour]
-                if {[llength $atom_contribution_ff]==0} then {                         
-                    set atom_contribution_ff $new_sofq
-                } else {
-                    for {set q 0} {$q < [llength $atom_contribution_ff]} {incr q} {
-                        lset atom_contribution_ff $q [expr [lindex $atom_contribution_ff $q] + [lindex $new_sofq $q]]
-                    }
-                } 
-                append out_line_ff $neighbour
-                append out_line_ff " {"
-                append out_line_ff [join $new_sofq " "]  
-                append out_line_ff "} "                      
-            }
-            append out_line_ff "}" 
-
-            puts $fp1 $out_line_ff
+            set atom_contribution [writeContributions $fp $atom $cur_atom_neighbours_contributions]
+            set atom_contribution_ff [writeContributions $fp1 $atom $cur_atom_neighbours_ff_contributions]
+            set atom_pos_contribution [writeContributions $p_fp $atom $cur_atom_neighbours_pos_contributions]
+            set atom_pos_contribution_ff [writeContributions $p_fp1 $atom $cur_atom_neighbours_ff_pos_contributions]
+            set atom_neg_contribution [writeContributions $n_fp $atom $cur_atom_neighbours_neg_contributions]
+            set atom_neg_contribution_ff [writeContributions $n_fp1 $atom $cur_atom_neighbours_ff_neg_contributions]
         }
-        dict set all_atom_contributions $atom [list $atom_contribution {} {}]
-        dict set all_atom_contributions_ff $atom [list $atom_contribution_ff {} {}]
 
         if {[expr $counter%100]==0} {
             puts "$counter out of $atoms_count atoms processed."
@@ -1532,11 +1608,40 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
     set all_atoms_counts [dict create]
     
     if {$write_to_file == 1} then {
-        close $fp1
         close $fp
+        close $fp1
+        close $p_fp
+        close $p_fp1
+        close $n_fp
+        close $n_fp1
     }
 
     set auto_call 0    
+}
+
+proc ::SQGUI::writeContributions {filePtr atom neighbour_contributions} {
+    set cur_atom_contribution {}
+    set out_line $atom
+    append out_line " {"
+    foreach neighbour [dict keys $neighbour_contributions] {
+        set new_sofq [dict get $neighbour_contributions $neighbour]
+        if {[llength $cur_atom_contribution]==0} then {                         
+            set cur_atom_contribution $new_sofq
+        } else {
+            for {set q 0} {$q < [llength $cur_atom_contribution]} {incr q} {
+                lset cur_atom_contribution $q [expr [lindex $cur_atom_contribution $q] + [lindex $new_sofq $q]]
+            }
+        } 
+        append out_line $neighbour
+        append out_line " {"
+        append out_line [join $new_sofq " "]  
+        append out_line "} "                      
+    }
+    append out_line "}" 
+
+    puts $filePtr $out_line
+
+    return $cur_atom_contribution
 }
 
 # Counts Dictionary format:
@@ -1781,8 +1886,6 @@ proc ::SQGUI::computeSelections {} {
     global all_atoms_counts
     global selection_atoms_counts
     global selection_atom_contributions
-    global all_atom_contributions
-    global all_atom_contributions_ff
     global possible_sq_contribution_differences
     global selection_groups_weights_all_denominator
     global atom_numbers_sel1
@@ -1806,7 +1909,8 @@ proc ::SQGUI::computeSelections {} {
     variable input_file_path
     variable enableStatistics
     variable enableRankings
-    variable useNonFFSq
+    variable useFFSq
+    variable useWhichContribution
 
     set atoms_sel1 0
     set atoms_sel2 0
@@ -1833,6 +1937,26 @@ proc ::SQGUI::computeSelections {} {
     set total_distances_count 0
 
     puts "\nCalculating partials for selections..."
+    set neighbour_contributions_file $input_file_path
+    if {$useFFSq} then {
+        if {$useWhichContribution=="positive"} then {
+            append neighbour_contributions_file "neighbour_positive_contributions_ff_sq.dat"
+        } elseif {$useWhichContribution=="negative"} then {
+            append neighbour_contributions_file "neighbour_negative_contributions_ff_sq.dat"
+        } else {
+            append neighbour_contributions_file "neighbour_contributions_ff_sq.dat"
+        }                    
+    } else {
+        if {$useWhichContribution=="positive"} then {
+            append neighbour_contributions_file "neighbour_positive_contributions_sq.dat"
+        } elseif {$useWhichContribution=="negative"} then {
+            append neighbour_contributions_file "neighbour_negative_contributions_sq.dat"
+        } else {
+            append neighbour_contributions_file "neighbour_contributions_sq.dat"
+        }
+    }
+    set contributionsFile [open $neighbour_contributions_file r]        
+
     if {$selection1=="all" && $selection2=="all"} then {    
         set total_distances_count $all_distances_count    
         set selectionDistances $total_distances_count
@@ -1842,10 +1966,36 @@ proc ::SQGUI::computeSelections {} {
         set sel2 [atomselect $molid "$selection2"]
         set atom_numbers_sel1 [$sel1 get serial]
         set atom_numbers_sel2 [$sel2 get serial]
-        if {$useNonFFSq} then {
-            set selection_atom_contributions $all_atom_contributions    
-        } else {
-            set selection_atom_contributions $all_atom_contributions_ff
+
+        while { [gets $contributionsFile line] >= 0 } {            
+            set startIdx 0
+            set curIdx [string first "\{" $line $startIdx]        
+            if {$curIdx > 0} {
+                set atom_key [string trim [string range $line 0 [expr $curIdx-1]]]
+                set neighbour_total_contribution {}
+                set startIdx [expr $curIdx +1]
+                set curIdx [string first "\{" $line $startIdx ]
+                while {$curIdx > 0} {
+                    set neighbour_key [string trim [string range $line $startIdx [expr $curIdx-1]]]
+                    set curEndIdx [string first "\}" $line [expr $curIdx+1] ]
+                    set startIdx [expr $curIdx +1]
+                    set neighbour_Sq [split [string trim [string range $line $startIdx [expr $curEndIdx-1]]] " "]
+                    if {[llength $neighbour_total_contribution]>0} then {
+                        for {set Sq_idx 0} {$Sq_idx < [llength $neighbour_total_contribution]} {incr Sq_idx} {
+                            if { [catch {lset neighbour_total_contribution $Sq_idx [expr [lindex $neighbour_Sq $Sq_idx] + [lindex $neighbour_total_contribution $Sq_idx] ] } fid] } {
+                                puts "Could not add the 2 vectors: $neighbour_Sq ; $neighbour_total_contribution"
+                                exit 1
+                            }
+                        }
+                    } else {
+                        set neighbour_total_contribution $neighbour_Sq
+                    }
+                    
+                    set startIdx [expr $curEndIdx + 1]
+                    set curIdx [string first "\{" $line $startIdx] 
+                }
+                dict set selection_atom_contributions $atom_key [list $neighbour_total_contribution {} {}]
+            }
         }
         
         set num_atoms_in_selection $num_atoms
@@ -2045,15 +2195,7 @@ proc ::SQGUI::computeSelections {} {
         printdistanceCounts $selectionDistances $subSelectionDistances $all_distances_count
         puts "Calculating atom and neighbor contributions from selections..."
         ### Read the contributions file and create the selection_atom_contributions for ranking, by filtering only the atoms from the selections
-        set neighbour_contributions_file $input_file_path
         set write_to_file 0
-        if {$useNonFFSq} then {
-            append neighbour_contributions_file "neighbour_contributions_sq.dat"    
-        } else {
-            append neighbour_contributions_file "neighbour_contributions_ff_sq.dat"
-        }
-        set contributionsFile [open $neighbour_contributions_file r]
-        set linesCnt 0
         set num_atoms_in_selection [llength [dict keys $selection_atom_contributions]]
         set isValid 0
 
@@ -2092,8 +2234,7 @@ proc ::SQGUI::computeSelections {} {
                     dict set selection_atom_contributions $atom_key [list $neighbour_total_contribution {} {}]
                 }                
             }
-        }
-        close $contributionsFile        
+        }      
         
         foreach grp_pair [dict keys $selection_groups_counts] {
 
@@ -2142,6 +2283,7 @@ proc ::SQGUI::computeSelections {} {
 
     }
 
+    close $contributionsFile  
     set enableStatistics 1
     set enableRankings 1
     EnDisable
@@ -2441,7 +2583,8 @@ proc ::SQGUI::UpdateRenderer {val} {
     variable delta_q
     variable leftBin
     variable rightBin 
-    variable useNonFFSq
+    variable useFFSq
+    variable useWhichContribution
     variable showNeighborPlotFlag
 
     variable vis_selection1
@@ -2518,12 +2661,24 @@ proc ::SQGUI::UpdateRenderer {val} {
             set sel5Str "same resid as ( $selected_atoms )"
         }               
     } else {
-        set neighbour_contributions_file $input_file_path   
-        if {$useNonFFSq} then {
-            append neighbour_contributions_file "neighbour_contributions_sq.dat"    
+        set neighbour_contributions_file $input_file_path 
+        if {$useFFSq} then {
+            if {$useWhichContribution=="positive"} then {
+                append neighbour_contributions_file "neighbour_positive_contributions_ff_sq.dat"
+            } elseif {$useWhichContribution=="negative"} then {
+                append neighbour_contributions_file "neighbour_negative_contributions_ff_sq.dat"
+            } else {
+                append neighbour_contributions_file "neighbour_contributions_ff_sq.dat"
+            }                    
         } else {
-            append neighbour_contributions_file "neighbour_contributions_ff_sq.dat"
-        }         
+            if {$useWhichContribution=="positive"} then {
+                append neighbour_contributions_file "neighbour_positive_contributions_sq.dat"
+            } elseif {$useWhichContribution=="negative"} then {
+                append neighbour_contributions_file "neighbour_negative_contributions_sq.dat"
+            } else {
+                append neighbour_contributions_file "neighbour_contributions_sq.dat"
+            }
+        }      
         set tstfile [open $neighbour_contributions_file r]
         set topN_list {}
         set required_atoms [dict keys $selection_atom_contributions]
@@ -2976,18 +3131,24 @@ proc ::SQGUI::sqgui {args} {
     label $i.bl -text "Selection 2:"
     entry $i.bt -width 20 -textvariable ::SQGUI::selection2
     
-    radiobutton $i.usenonFF    -text "No Form Factor" -variable ::SQGUI::useNonFFSq  -value "1"
-    radiobutton $i.useFF -text "Form Factor" -variable ::SQGUI::useNonFFSq  -value "0"
+    checkbutton $i.useFF -text " Use Form Factor" -variable ::SQGUI::useFFSq
+    $i.useFF deselect
+
+    radiobutton $i.useSq    -text "Total S(q)" -variable ::SQGUI::useWhichContribution  -value "total"
+    radiobutton $i.usePosSq -text "Positive Contribution to S(q)" -variable ::SQGUI::useWhichContribution  -value "positive"
+    radiobutton $i.useNegSq -text "Negative Contribution to S(q)" -variable ::SQGUI::useWhichContribution  -value "negative"
+    $i.useSq select
+    label $i.temp -text " "
     button $i.computeSel -text {Compute Selections} -command [namespace code computeSelections]
     
-    grid $i.al $i.at $i.bl $i.bt $i.usenonFF $i.useFF $i.computeSel -row 0 -sticky snew
-    grid columnconfigure $i 0 -weight 2
-    grid columnconfigure $i 1 -weight 2
-    grid columnconfigure $i 2 -weight 2
+    grid $i.al $i.at $i.bl $i.bt -row 0 -sticky snew
+    grid $i.useSq $i.usePosSq $i.useNegSq $i.useFF $i.computeSel -row 2 -sticky snew
+
+    grid columnconfigure $i 0 -weight 1
+    grid columnconfigure $i 1 -weight 1
+    grid columnconfigure $i 2 -weight 1
     grid columnconfigure $i 3 -weight 2
-    grid columnconfigure $i 4 -weight 2
-    grid columnconfigure $i 5 -weight 2
-    grid columnconfigure $i 6 -weight 2
+    grid columnconfigure $i 4 -weight 1
 
     #################
     # subdivide and layout the r bins frame
@@ -3034,19 +3195,18 @@ proc ::SQGUI::sqgui {args} {
     #top N contributors frame
     set i $w.in2.topNframe
     label $i.al -text "Top N Atomic Contributors:" 
-    scale $i.at -orient horizontal -length 120 -sliderlength 30  -resolution 1 -variable ::SQGUI::topN
+    scale $i.at -orient horizontal -length 120 -sliderlength 25  -resolution 1 -variable ::SQGUI::topN
     label $i.bl -text "Selected Atom (Serial):" 
-    scale $i.bt -orient horizontal -length 120 -sliderlength 30  -resolution 1 -variable ::SQGUI::atomsAll
-    label $i.temp2 -text "Show Neighbor Ranking Plot:"
-    radiobutton $i.dontShowNeighborRankingRankingPlot -text "No" -variable ::SQGUI::showNeighborPlotFlag  -value "0"
-    radiobutton $i.showNeighborRankingRankingPlot -text "Yes" -variable ::SQGUI::showNeighborPlotFlag  -value "1"
-    grid $i.al $i.at $i.bl $i.bt $i.temp2 $i.dontShowNeighborRankingRankingPlot $i.showNeighborRankingRankingPlot -row 0 -sticky snew 
+    scale $i.bt -orient horizontal -length 120 -sliderlength 25  -resolution 1 -variable ::SQGUI::atomsAll
+    checkbutton $i.showNeighborRankingRankingPlot -text " Show Neighbor Ranking Plot" -variable ::SQGUI::showNeighborPlotFlag
+    $i.showNeighborRankingRankingPlot deselect
+    grid $i.al $i.at $i.bl $i.bt $i.showNeighborRankingRankingPlot -row 0 -sticky snew 
     
     grid columnconfigure $i 0 -weight 2
     grid columnconfigure $i 1 -weight 4
     grid columnconfigure $i 2 -weight 2
     grid columnconfigure $i 3 -weight 4
-    grid columnconfigure $i 4 -weight 1
+    grid columnconfigure $i 4 -weight 2
 
     #top N atoms or molecules frame
     set i $w.in2.topNOptionframe
