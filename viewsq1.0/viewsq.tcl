@@ -205,6 +205,8 @@ proc ::SQGUI::get_s_q {y_gofr contributions_file_path} {
     variable max_q
     variable delta_q
     variable density
+    variable useLorch
+    variable lorchC
 
     set numbins [expr $rmax / $delta]
     set maxIdx 0
@@ -238,9 +240,16 @@ proc ::SQGUI::get_s_q {y_gofr contributions_file_path} {
             set glist_item [lindex $y_gofr $r]
             set sin_expr [expr $varx * $r * $delta]         
             set sin_val [expr sin($sin_expr) ]
+            set lorch 1
+            set lorchTerm 1
+            if {$useLorch==1 && $r!=0} {
+                set lorchTerm [expr $pi * $r * $delta/ $lorchC]
+                set lorch [expr [expr sin($lorchTerm)] / $lorchTerm]
+            }       
             set temp_expr [expr $glist_item - 1.0 ]
             set temp_vary1 [expr $r * $delta * $temp_expr] 
             set test_temp [expr $sin_val / $varx]
+            set test_temp [expr $test_temp * $lorch]
             set temp_vary2 [expr $temp_vary1 * $test_temp]
             set temp_vary2 [expr $temp_vary2 * 4 * $pi * $density * $delta]
             set vary [expr $vary + $temp_vary2]
@@ -301,6 +310,8 @@ proc ::SQGUI::get_partial_s_q {y_gofr contributions_file_path element_pair pair_
     variable max_q
     variable delta_q
     variable density
+    variable useLorch
+    variable lorchC
 
     set numbins [expr $rmax / $delta]
     set maxIdx 0
@@ -338,9 +349,16 @@ proc ::SQGUI::get_partial_s_q {y_gofr contributions_file_path element_pair pair_
             set glist_item [lindex $y_gofr $r]
             set sin_expr [expr $varx * $r * $delta]         
             set sin_val [expr sin($sin_expr) ]
+            set lorch 1
+            set lorchTerm 1
+            if {$useLorch==1 && $r!=0} {
+                set lorchTerm [expr $pi * $r * $delta/ $lorchC]
+                set lorch [expr [expr sin($lorchTerm)] / $lorchTerm]
+            }
             set temp_expr [expr $glist_item - 1.0 ]
             set temp_vary1 [expr $r * $delta * $temp_expr] 
             set test_temp [expr $sin_val / $varx]
+            set test_temp [expr $test_temp * $lorch]
             set temp_vary2 [expr $temp_vary1 * $test_temp]
             set temp_vary2 [expr $temp_vary2 * 4 * $pi * $density * $delta]
             set temp_vary2 [expr $temp_vary2 * $pair_weight]
@@ -409,6 +427,8 @@ proc ::SQGUI::get_partial_s_q_with_contributions {y_gofr pair_weight} {
     variable max_q
     variable delta_q
     variable density
+    variable useLorch
+    variable lorchC
 
     set rbin_contributions_to_S_q {}
     set numbins [expr $rmax / $delta]
@@ -425,9 +445,16 @@ proc ::SQGUI::get_partial_s_q_with_contributions {y_gofr pair_weight} {
             set glist_item [lindex $y_gofr $r]
             set sin_expr [expr $varx * $r * $delta]         
             set sin_val [expr sin($sin_expr) ]
+            set lorch 1
+            set lorchTerm 1
+            if {$useLorch==1 && $r!=0} {
+                set lorchTerm [expr $pi * $r * $delta/ $lorchC]
+                set lorch [expr [expr sin($lorchTerm)] / $lorchTerm]
+            }
             set temp_expr [expr $glist_item - 1.0 ]
             set temp_vary1 [expr $r * $delta * $temp_expr] 
             set test_temp [expr $sin_val / $varx]
+            set test_temp [expr $test_temp * $lorch]
             set temp_vary2 [expr $temp_vary1 * $test_temp]
             set temp_vary2 [expr $temp_vary2 * 4 * $pi * $density * $delta]
             set temp_vary2 [expr $temp_vary2 * $pair_weight]
@@ -464,6 +491,8 @@ proc ::SQGUI::get_formfactor_weighted_partial_s_q {y_gofr weight pair_formfactor
     variable max_q
     variable delta_q
     variable density
+    variable useLorch
+    variable lorchC
 
     set numbins [expr $rmax / $delta]
     set maxIdx 0
@@ -512,9 +541,16 @@ proc ::SQGUI::get_formfactor_weighted_partial_s_q {y_gofr weight pair_formfactor
             set glist_item [lindex $y_gofr $r]
             set sin_expr [expr $varx * $r * $delta]         
             set sin_val [expr sin($sin_expr) ]
+            set lorch 1
+            set lorchTerm 1
+            if {$useLorch==1 && $r!=0} {
+                set lorchTerm [expr $pi * $r * $delta/ $lorchC]
+                set lorch [expr [expr sin($lorchTerm)] / $lorchTerm]
+            }
             set temp_expr [expr $glist_item - 1.0 ]
             set temp_vary1 [expr $r * $delta * $temp_expr] 
             set test_temp [expr $sin_val / $varx]
+            set test_temp [expr $test_temp * $lorch]
             set temp_vary2 [expr $temp_vary1 * $test_temp]
             set temp_vary2 [expr $temp_vary2 * 4 * $pi * $density * $delta]
             set temp_vary2 [expr $temp_vary2 * $weight]
@@ -591,6 +627,8 @@ proc ::SQGUI::get_formfactor_weighted_partial_s_q_with_contributions {y_gofr wei
     variable max_q
     variable delta_q
     variable density
+    variable useLorch
+    variable lorchC
 
     set numbins [expr $rmax / $delta]
     set maxIdx 0
@@ -627,9 +665,16 @@ proc ::SQGUI::get_formfactor_weighted_partial_s_q_with_contributions {y_gofr wei
             set glist_item [lindex $y_gofr $r]
             set sin_expr [expr $varx * $r * $delta]         
             set sin_val [expr sin($sin_expr) ]
+            set lorch 1
+            set lorchTerm 1
+            if {$useLorch==1 && $r!=0} {
+                set lorchTerm [expr $pi * $r * $delta/ $lorchC]
+                set lorch [expr [expr sin($lorchTerm)] / $lorchTerm]
+            }
             set temp_expr [expr $glist_item - 1.0 ]
             set temp_vary1 [expr $r * $delta * $temp_expr] 
             set test_temp [expr $sin_val / $varx]
+            set test_temp [expr $test_temp * $lorch]
             set temp_vary2 [expr $temp_vary1 * $test_temp]
             set temp_vary2 [expr $temp_vary2 * 4 * $pi * $density * $delta]
             set temp_vary2 [expr $temp_vary2 * $weight]
