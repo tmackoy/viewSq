@@ -22,6 +22,7 @@ namespace eval ::SQGUI:: {
     variable showNeighborPlotFlag 0; # stores whether to display top N neighbors plot
     variable useLorch       0;      # Whether to use Lorch fucntion during S(q) calculations
     variable lorchC         "10.0"; # Default lorch constant is same as rmax
+    variable rankDescending 1;      # Whether to rank atoms by decreasing order of contribution
 
     variable delta      "0.1";      # delta for histogram
     variable rmax      "10.0";      # max r in histogram
@@ -2386,6 +2387,7 @@ proc ::SQGUI::DisplayStatsForSelections {} {
     variable display_FormFactorWeighted_Results 
     variable useFFSq
     variable useWhichContribution
+    variable rankDescending
 
     variable selection1
     variable selection2
@@ -2586,7 +2588,13 @@ proc ::SQGUI::DisplayStatsForSelections {} {
     grid $l15 $l16 $l17 
     grid $l15 $l16
 
-    set topN_Sorted [lsort -real -index 1 -decreasing $topN_list]    
+    set topN_Sorted {}
+    if {$rankDescending==1} then {
+        set topN_Sorted [lsort -real -index 1 -decreasing $topN_list]
+    } else {
+        set topN_Sorted [lsort -real -index 1 -increasing $topN_list]
+    }
+    
     set cntr 0
     set sorted_atoms "serial "
     set atom_properties {}
@@ -3341,16 +3349,16 @@ proc ::SQGUI::sqgui {args} {
     # define a slider using scale
     scale $i.at -orient horizontal -length 100 -sliderlength 30 -variable ::SQGUI::leftBin 
     label $i.bl -text "Right q:"
-    scale $i.bt -orient horizontal -length 100 -sliderlength 30 -variable ::SQGUI::rightBin
-    label $i.tmp -text "     "
+    scale $i.bt -orient horizontal -length 100 -sliderlength 30 -variable ::SQGUI::rightBin   
+    checkbutton $i.descOrder -text "Descending Order of Contribution" -variable ::SQGUI::rankDescending
     button $i.computeRanks -text {Compute Rankings} -command [namespace code DisplayStatsForSelections]
-    grid $i.al $i.at $i.bl $i.bt $i.tmp $i.computeRanks -row 0 -sticky snew
-    grid columnconfigure $i 0 -weight 2
-    grid columnconfigure $i 1 -weight 2
-    grid columnconfigure $i 2 -weight 2
-    grid columnconfigure $i 3 -weight 2    
-    grid columnconfigure $i 4 -weight 1    
-    grid columnconfigure $i 5 -weight 2
+    grid $i.al $i.at $i.bl $i.bt $i.descOrder $i.computeRanks -row 0 -sticky snew
+    grid columnconfigure $i 0 -weight 1
+    grid columnconfigure $i 1 -weight 1
+    grid columnconfigure $i 2 -weight 1
+    grid columnconfigure $i 3 -weight 1    
+    grid columnconfigure $i 4 -weight 2  
+    grid columnconfigure $i 5 -weight 1
 
     #################
     # subdivide and layout the visualization settings frame
