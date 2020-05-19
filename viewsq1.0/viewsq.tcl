@@ -1765,7 +1765,9 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
     set selections_all_bin_values [dict create]
 
     # Merging all the group pair counts in to one single dictionary
-    foreach grp_pair [dict keys $counts_dict] {
+    set selection_weight_all_denominator 0
+    foreach grp_pair [dict keys $counts_dict] {        
+        set selection_weight_all_denominator [expr $selection_weight_all_denominator + [dict get $selection_groups_weights_all_denominator $grp_pair]]
         set cur_grp_pair_counts_dict [dict get $counts_dict $grp_pair]
         foreach bin [dict keys $cur_grp_pair_counts_dict] {
             set cur_bin_val [dict get $cur_grp_pair_counts_dict $bin]
@@ -1778,12 +1780,12 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
     }
 
     # Calculate g(r) for all the counts in the selections
-    set total_gofr_result [get_partial_g_r $selections_all_bin_values 1]
+    set total_gofr_result [get_partial_g_r $selections_all_bin_values $selection_weight_all_denominator]
     set x_total_gofr [lindex $total_gofr_result 0]
     set y_total_gofr [lindex $total_gofr_result 1]
     
     # Calculate non FF weighted S(q) for all the counts in the selections
-    set total_sofq_result [get_partial_s_q_with_contributions $y_total_gofr 1]
+    set total_sofq_result [get_partial_s_q_with_contributions $y_total_gofr $selection_weight_all_denominator]
     set x_total_sofq [lindex $total_sofq_result 0]
     set y_total_sofq [lindex $total_sofq_result 1]
     set pos_contributions [lindex $total_sofq_result 2]
@@ -3150,9 +3152,9 @@ proc ::SQGUI::sqgui {args} {
     grid rowconfigure    $w 0 -weight 10   -minsize 150
     grid rowconfigure    $w 1 -weight 1    -minsize 25
     grid rowconfigure    $w 2 -weight 1    -minsize 40
-    grid rowconfigure    $w 3 -weight 1    -minsize 40
+    grid rowconfigure    $w 3 -weight 2    -minsize 70
     grid rowconfigure    $w 4 -weight 1    -minsize 50
-    grid rowconfigure    $w 5 -weight 1    -minsize 100
+    grid rowconfigure    $w 5 -weight 10    -minsize 100
 
     # frame for g(r) settings
     labelframe $w.in.gr_settings -bd 2 -relief ridge -text "g(r) Settings:" -padx 1m -pady 1m
@@ -3595,6 +3597,7 @@ proc ::SQGUI::EnDisable {args} {
         $w.in1.computeRanks configure -state disabled
         $w.in1.at configure -state disabled
         $w.in1.bt configure -state disabled
+        $w.in1.descOrder configure -state disabled
         $w.in2.topNframe.at configure -state disabled
         $w.in2.topNframe.bt configure -state disabled
         $w.in2.topNOptionframe.dispatoms configure -state disabled
@@ -3604,7 +3607,8 @@ proc ::SQGUI::EnDisable {args} {
     } else {
         $w.in1.computeRanks configure -state normal
         $w.in1.at configure -state normal
-        $w.in1.bt configure -state normal       
+        $w.in1.bt configure -state normal  
+        $w.in1.descOrder configure -state normal     
     }
 
     # If compute ranking is done, we enable the UI controls corresponding to visualization settings.
