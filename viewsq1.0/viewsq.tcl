@@ -2478,7 +2478,7 @@ proc ::SQGUI::DisplayStatsForSelections {} {
                                                 -legend "S(q)" -nolines -fillcolor red -linecolor red -marker point -radius 2 -plot]
 
         # plot rbin contributions to form factor weighted s(q) for the selected q range
-        $selection_rbins_plot add $rbin_x $ff_s_q_rbin_contributions_selected_range -nolines -fillcolor blue -legend "Form factor weighted S(q)- Full denominator" -marker square -radius 2 -plot
+        $selection_rbins_plot add $rbin_x $ff_s_q_rbin_contributions_selected_range -nolines -fillcolor blue -legend "Form factor weighted S(q)" -marker square -radius 2 -plot
     } 
 
     set numberOfDecimals 3
@@ -2541,7 +2541,7 @@ proc ::SQGUI::DisplayStatsForSelections {} {
     set l0 [label $cur_UI.lable_Sq1 -text "          " -justify right -font {helvetica 12 bold}]
     set l1 [label $cur_UI.lable_Sq2 -text "S(q)" -justify right -font {helvetica 12 bold}]
 
-    set l2 [label $cur_UI.lable_Sq3 -text "Form Factor Weighted S(q)- Full denominator" -justify left -font {helvetica 12 bold}]
+    set l2 [label $cur_UI.lable_Sq3 -text "Form Factor Weighted" -justify left -font {helvetica 12 bold}]
     grid $l0 $l1 $l2 
     grid $l0 $l1 
 
@@ -2551,19 +2551,19 @@ proc ::SQGUI::DisplayStatsForSelections {} {
     grid $l3 $l4 $l5
     grid $l3 $l4 
 
-    set l6 [label $cur_UI.lable_Sq_pos -text "Positive contribution: " -justify right -font {helvetica 12 bold}]
+    set l6 [label $cur_UI.lable_Sq_pos -text "Positive Component (Partial): " -justify right -font {helvetica 12 bold}]
     set l7 [label $cur_UI.lable_Sq_pos_val1 -text $s_q_pos_val_selected_range -justify left -font {helvetica 12 bold}]
     set l8 [label $cur_UI.lable_Sq_pos_val2 -text $ff_s_q_pos_val_selected_range -justify left -font {helvetica 12 bold}]
     grid $l6 $l7 $l8
     grid $l6 $l7
 
-    set l9 [label $cur_UI.lable_Sq_neg -text "Negative contribution: " -justify right -font {helvetica 12 bold}]
+    set l9 [label $cur_UI.lable_Sq_neg -text "Negative Component (Partial): " -justify right -font {helvetica 12 bold}]
     set l10 [label $cur_UI.lable_Sq_neg_val1 -text $s_q_neg_val_selected_range -justify left -font {helvetica 12 bold}]
     set l11 [label $cur_UI.lable_Sq_neg_val2 -text $ff_s_q_neg_val_selected_range -justify left -font {helvetica 12 bold}]
     grid $l9 $l10 $l11
     grid $l9 $l10
     
-    set l12 [label $cur_UI.lable_Sq_pos_neg -text "Positive + magnitude of negative contribution: " -justify right -font {helvetica 12 bold}]
+    set l12 [label $cur_UI.lable_Sq_pos_neg -text "Positive Component + Magnitude of Negative Component: " -justify right -font {helvetica 12 bold}]
     set l13 [label $cur_UI.lable_Sq_pos_neg_val1 -text $s_q_pos_neg_val_selected_range -justify left -font {helvetica 12 bold}]
     set l14 [label $cur_UI.lable_Sq_pos_neg_val2 -text $ff_s_q_pos_neg_val_selected_range -justify left -font {helvetica 12 bold}]
     grid $l12 $l13 $l14 
@@ -2571,11 +2571,11 @@ proc ::SQGUI::DisplayStatsForSelections {} {
 
     set labelText ""
     if {$useWhichContribution=="positive"} then {
-        set labelText "Selected Positive Contribution:"
+        set labelText "Positive Component (Full):"
     } elseif {$useWhichContribution=="negative"} then {
-        set labelText "Selected Negative Contribution:"
+        set labelText "Negative Component (Full):"
     } else {
-        set labelText "Selected Total Contribution:"
+        set labelText "S(q):"
     } 
     set l15 [label $cur_UI.lable_selected_contribution -text $labelText -justify right -font {helvetica 12 bold}]
     
@@ -3133,9 +3133,9 @@ proc ::SQGUI::sqgui {args} {
     # computation action button
     button $w.foot -text {Compute S(q)} -command [namespace code runSofQ]
     # frame for selections
-    labelframe $w.sel -bd 2 -relief ridge -text "Selections:" -padx 1m -pady 1m
+    labelframe $w.sel -bd 2 -relief ridge -text "Partial S(q) Settings:" -padx 1m -pady 1m
     # frame for R bin calculations
-    labelframe $w.rbin -bd 2 -relief ridge -text "r bins:" -padx 1m -pady 1m
+    labelframe $w.rbin -bd 2 -relief ridge -text "r-bins:" -padx 1m -pady 1m
     # frame for q range
     labelframe $w.in1 -bd 2 -relief ridge -text "q Range Selection:" -padx 1m -pady 1m
     # frame for vis settings
@@ -3308,15 +3308,17 @@ proc ::SQGUI::sqgui {args} {
     checkbutton $i.useFF -text " Use Form Factor" -variable ::SQGUI::useFFSq
     $i.useFF deselect
 
-    radiobutton $i.useSq    -text "Total S(q)" -variable ::SQGUI::useWhichContribution  -value "total"
-    radiobutton $i.usePosSq -text "Positive Contribution to S(q)" -variable ::SQGUI::useWhichContribution  -value "positive"
-    radiobutton $i.useNegSq -text "Negative Contribution to S(q)" -variable ::SQGUI::useWhichContribution  -value "negative"
+    label $i.precompsel -text "Precompute:"
+    radiobutton $i.useSq    -text "Net Atomic Contributions to S(q)" -variable ::SQGUI::useWhichContribution  -value "total"
+    radiobutton $i.usePosSq -text "Positive Atomic Contributions to S(q)" -variable ::SQGUI::useWhichContribution  -value "positive"
+    radiobutton $i.useNegSq -text "Negative Atomic Contributions to S(q)" -variable ::SQGUI::useWhichContribution  -value "negative"
     $i.useSq select
     label $i.temp -text " "
-    button $i.computeSel -text {Compute Selections} -command [namespace code computeSelections]
+    button $i.computeSel -text {Compute Partial S(q)} -command [namespace code computeSelections]
     
-    grid $i.al $i.at $i.bl $i.bt -row 0 -sticky snew
-    grid $i.useSq $i.usePosSq $i.useNegSq $i.useFF $i.computeSel -row 2 -sticky snew
+    grid $i.al $i.at $i.bl $i.bt $i.useFF -row 0 -sticky snew
+    grid $i.temp -row 1 -sticky snew
+    grid $i.precompsel $i.useSq $i.usePosSq $i.useNegSq $i.computeSel -row 2 -sticky snew
 
     grid columnconfigure $i 0 -weight 1
     grid columnconfigure $i 1 -weight 1
@@ -3327,9 +3329,9 @@ proc ::SQGUI::sqgui {args} {
     #################
     # subdivide and layout the r bins frame
     set i $w.rbin
-    label $i.l1 -text "selection 1" -justify "right"
+    label $i.l1 -text "Selection 1:" -justify "right"
     entry $i.t1 -width 20 -textvariable ::SQGUI::newSelection1
-    label $i.l2 -text "selection 2" -justify "right"
+    label $i.l2 -text "Selection 2:" -justify "right"
     entry $i.t2 -width 20 -textvariable ::SQGUI::newSelection2
     label $i.l3 -text "r-bin(s):" -justify "right"
     entry $i.t3 -width 20 -textvariable ::SQGUI::rbinRange
@@ -3352,8 +3354,8 @@ proc ::SQGUI::sqgui {args} {
     scale $i.at -orient horizontal -length 100 -sliderlength 30 -variable ::SQGUI::leftBin 
     label $i.bl -text "Right q:"
     scale $i.bt -orient horizontal -length 100 -sliderlength 30 -variable ::SQGUI::rightBin   
-    checkbutton $i.descOrder -text "Descending Order of Contribution" -variable ::SQGUI::rankDescending
-    button $i.computeRanks -text {Compute Rankings} -command [namespace code DisplayStatsForSelections]
+    checkbutton $i.descOrder -text "Plot/Visualize in Descending Order of Atomic Contributions to S(q)" -variable ::SQGUI::rankDescending
+    button $i.computeRanks -text {Compute Atomic Rankings and Summands} -command [namespace code DisplayStatsForSelections]
     grid $i.al $i.at $i.bl $i.bt $i.descOrder $i.computeRanks -row 0 -sticky snew
     grid columnconfigure $i 0 -weight 1
     grid columnconfigure $i 1 -weight 1
@@ -3376,7 +3378,7 @@ proc ::SQGUI::sqgui {args} {
     set i $w.in2.topNframe
     label $i.al -text "Top N Atomic Contributors:" 
     scale $i.at -orient horizontal -length 120 -sliderlength 25  -resolution 1 -variable ::SQGUI::topN
-    label $i.bl -text "Selected Atom (Serial):" 
+    label $i.bl -text "Central Atom (Serial):" 
     scale $i.bt -orient horizontal -length 120 -sliderlength 25  -resolution 1 -variable ::SQGUI::atomsAll
     checkbutton $i.showNeighborRankingRankingPlot -text " Show Neighbor Ranking Plot" -variable ::SQGUI::showNeighborPlotFlag
     $i.showNeighborRankingRankingPlot deselect
@@ -3400,7 +3402,7 @@ proc ::SQGUI::sqgui {args} {
     radiobutton $i.betaScore -text "Score" -variable ::SQGUI::addBeta  -value "0"
     label $i.tmp1 -text "  "
 
-    label $i.al1 -text "Selection1:" 
+    label $i.al1 -text "Selection 1:" 
     entry $i.at1 -width 20 -textvariable ::SQGUI::vis_selection1
     
     label $i.al2 -text "Coloring Method:" -width 20
@@ -3430,7 +3432,7 @@ proc ::SQGUI::sqgui {args} {
     ttk::combobox $i.a_cb4 -textvariable ::SQGUI::selection1_draw_method -values $draw_methods -width 15 -justify left -state normal
     $i.a_cb4 set "VDW"
 
-    label $i.bl1 -text "Selection2:" 
+    label $i.bl1 -text "Selection 2:" 
     entry $i.bt1 -width 20 -textvariable ::SQGUI::vis_selection2
     
     label $i.bl2 -text "Coloring Method:" -width 20
@@ -3453,7 +3455,7 @@ proc ::SQGUI::sqgui {args} {
     set selection2_draw_method "VDW"
     $i.b_cb4 set "VDW"
 
-    label $i.cl1 -text "Selection3:" 
+    label $i.cl1 -text "Selection 3:" 
     entry $i.ct1 -width 20 -textvariable ::SQGUI::vis_selection3
     
     label $i.cl2 -text "Coloring Method:" -width 20
@@ -3475,7 +3477,7 @@ proc ::SQGUI::sqgui {args} {
     set selection3_draw_method "VDW"
     $i.c_cb4 set "VDW"
 
-    label $i.dl1 -text "Selection4:" 
+    label $i.dl1 -text "Selection 4:" 
     entry $i.dt1 -width 20 -textvariable ::SQGUI::vis_selection4
     
     label $i.dl2 -text "Coloring Method:" -width 20
@@ -3498,7 +3500,7 @@ proc ::SQGUI::sqgui {args} {
     set selection4_draw_method "VDW"
     $i.d_cb4 set "VDW"
 
-    label $i.el1 -text "Selection5:" 
+    label $i.el1 -text "Selection 5:" 
     entry $i.et1 -width 20 -textvariable ::SQGUI::vis_selection5
     
     label $i.el2 -text "Coloring Method:" -width 20
