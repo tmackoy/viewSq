@@ -774,7 +774,7 @@ proc ::SQGUI::runSofQ {} {
         set last [molinfo $molid get numframes]
     } 
 
-    puts "Calculating total g(r)..."
+    puts "Calculating g(r)..."
     set test_infile [molinfo 0 get filename]                                                                        
     set last_delim [string last "/" $test_infile ]
     set first_delim [string first "/" $test_infile ]
@@ -824,7 +824,7 @@ proc ::SQGUI::runSofQ {} {
                 set is_first_frame 0
                 incr n_frames 
             }
-            puts "Frame $frm Done!"
+            puts "Frame $frm done!"
         }
     }  
 
@@ -868,7 +868,7 @@ proc ::SQGUI::runSofQ {} {
     if {$cannotplot} then {
         tk_dialog .errmsg {viewSq Error} "Multiplot is not available." error 0 Dismiss
     } else {
-        set gofr_plot [multiplot -x $x_gofr -y $y_gofr -title "g(r) plot (total atomic distances: $total_distances_count, all-all)" -lines -linewidth 2 -marker point -plot ]
+        set gofr_plot [multiplot -x $x_gofr -y $y_gofr -title "g(r) (all-all, total atomic distances: $total_distances_count)" -lines -linewidth 2 -marker point -plot ]
     }
 
     set total_S_q_contributions_file $input_file_path
@@ -877,7 +877,7 @@ proc ::SQGUI::runSofQ {} {
 
     set qmax [expr 1.0 / $delta]     
     set dq [expr $qmax / $numbins]  
-    puts "Calculating total S(q)..."
+    puts "Calculating S(q)..."
     set sofq_result [get_s_q $y_gofr $total_S_q_contributions_file]
      # get_s_q method return a list of lists where index 
     #       0- list of qs in S(q)
@@ -892,14 +892,14 @@ proc ::SQGUI::runSofQ {} {
     } else {
         set tmp 4
         # Total S(q) plot
-        set SQ_plot [multiplot -x $sqx -y $sqy -title "S(q) plot (all-all)" -lines -linewidth 2 -marker point -legend "S(q)" -plot ]
+        set SQ_plot [multiplot -x $sqx -y $sqy -title "S(q) (all-all)" -lines -linewidth 2 -marker point -legend "S(q)" -plot ]
         set total_S_q_pos_contributions_y [dict values $total_S_q_pos_contributions]
         set total_S_q_neg_contributions_y [dict values $total_S_q_neg_contributions]
 
         # Positive and negative components of S(q) plot
-        set SQ_plot_pos_neg_contributions [multiplot -x $sqx -y $total_S_q_pos_contributions_y -title "Positive and negative contributions for total S(q) plot (all-all)" \
-                                                -lines -linewidth 2 -marker point -linecolor green -fillcolor black -legend "Positive Contribution"]
-        $SQ_plot_pos_neg_contributions add $sqx $total_S_q_neg_contributions_y -lines -linewidth 2 -marker point -linecolor red -fillcolor black -legend "Negative Contribution" -plot
+        set SQ_plot_pos_neg_contributions [multiplot -x $sqx -y $total_S_q_pos_contributions_y -title "Net Positive and Net Negative Components of S(q) (all-all)" \
+                                                -lines -linewidth 2 -marker point -linecolor green -fillcolor black -legend "Net Positive Component"]
+        $SQ_plot_pos_neg_contributions add $sqx $total_S_q_neg_contributions_y -lines -linewidth 2 -marker point -linecolor red -fillcolor black -legend "Net Positive Component" -plot
 
         set S_q_pos_abs_neg_contributions $total_S_q_pos_contributions_y
         set k_idx 0
@@ -909,7 +909,7 @@ proc ::SQGUI::runSofQ {} {
         }
 
         # Sum of absolute components of S(q) plot.
-        set SQ_plot_pos_abs_neg_contributions [multiplot -x $sqx -y $S_q_pos_abs_neg_contributions -title "Sum of positive and magnitude of negative contributions for total S(q) plot (all-all)" -lines -linewidth 2 -marker point -plot ]
+        set SQ_plot_pos_abs_neg_contributions [multiplot -x $sqx -y $S_q_pos_abs_neg_contributions -title "Sum of Net Positive and Magnitude of Net Negative Components of S(q) (all-all)" -lines -linewidth 2 -marker point -plot ]
     }
 
     # Disable the Compute S(q) button to stop calling runSofQ() again!
@@ -990,7 +990,7 @@ proc ::SQGUI::runSofQ {} {
     }
     set total_distances_count [ladd $bin_totals]
 
-    puts "Calculating total form factor weighted S(q)..."    
+    puts "Calculating form factor weighted S(q)..."    
     ProcessAllsubGroupPairs
 
     set auto_call 0
@@ -1858,12 +1858,12 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
         #   True: the call came from selections and we have to plot all the graphs.
         #   False: the call came from "Compute S(q)" and plot only ff weighted S(q) plot.
         if {$auto_call} then {
-            set addToTitle "for the selection "
+            set addToTitle "Partial "
             # plot total g(r) for the selections
-            set selection_total_gofr_plot [multiplot -x $x_total_gofr -y $y_total_gofr -title "Selections - g(r) plot (total atomic distances: $total_distances_count, $sel1_20-$sel2_20)" -lines -linewidth 2 -marker point -plot]
+            set selection_total_gofr_plot [multiplot -x $x_total_gofr -y $y_total_gofr -title "Partial g(r) ($sel1_20-$sel2_20, total atomic distances: $total_distances_count)" -lines -linewidth 2 -marker point -plot]
 
             # plot total s(q) for the selections
-            set selection_total_sofq_plot [multiplot -x $x_total_sofq -y $y_total_sofq -title "Selections - S(q) and form factor weighted S(q) plot ($sel1_20-$sel2_20)" \
+            set selection_total_sofq_plot [multiplot -x $x_total_sofq -y $y_total_sofq -title "Partial S(q) ($sel1_20-$sel2_20)" \
                                                     -legend "S(q)" -lines -linewidth 3 -marker point -plot]
 
             # plot form factor weighted s(q) for the selections on the same plot as total s(q) for the selections
@@ -1872,8 +1872,8 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
             # plot positive and negative contributions to s(q) at each q separately
             set selection_S_q_pos_contributions_y [dict values $selection_S_q_pos_contributions]
             set selection_S_q_neg_contributions_y [dict values $selection_S_q_neg_contributions]        
-            set SQ_plot_pos_neg_contributions [multiplot -x [dict keys $selection_S_q_pos_contributions] -y $selection_S_q_pos_contributions_y -title "Selections - positive and negative contributions to S(q) ($sel1_20-$sel2_20)" \
-                                                    -lines -linewidth 2 -marker point -linecolor green -legend "Positive Contribution" -fillcolor black]
+            set SQ_plot_pos_neg_contributions [multiplot -x [dict keys $selection_S_q_pos_contributions] -y $selection_S_q_pos_contributions_y -title "Net Positive and Net Negative Components of Partial S(q) ($sel1_20-$sel2_20)" \
+                                                    -lines -linewidth 2 -marker point -linecolor green -legend "Net Positive Component" -fillcolor black]
             $SQ_plot_pos_neg_contributions add [dict keys $selection_S_q_pos_contributions] $selection_S_q_neg_contributions_y -lines -linewidth 2 \
                                                     -legend "Negative Contribution" -marker point -linecolor red -fillcolor black -plot
 
@@ -1885,7 +1885,7 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
                 incr k_idx
             }
             set SQ_plot_pos_abs_neg_contributions [multiplot -x [dict keys $selection_S_q_pos_contributions] -y $S_q_pos_abs_neg_contributions \
-                                                    -title "Selections - sum of positive and magnitude of negative contributions to S(q) ($sel1_20-$sel2_20)" -lines -linewidth 2 -marker point -plot ]                  
+                                                    -title "Sum of Net Positive and Magnitude of Net Negative Components of S(q) ($sel1_20-$sel2_20)" -lines -linewidth 2 -marker point -plot ]                  
         } else {
            $SQ_plot add $x_total_sofq $y_weighted_partial_sofq_sum -lines -linewidth 2 -linecolor blue -marker point -legend "Form Factor Weighted S(q)" -plot
         }
@@ -1894,10 +1894,10 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
         set selection_weighted_S_q_pos_contributions_y [dict values $selection_weighted_S_q_pos_contributions]
         set selection__weighted_S_q_neg_contributions_y [dict values $selection_weighted_S_q_neg_contributions]     
         set ff_weighted_SQ_plot_pos_neg_contributions [multiplot -x [dict keys $selection_weighted_S_q_pos_contributions] -y $selection_weighted_S_q_pos_contributions_y \
-            -title "positive and negative contributions for form factor weighted S(q) ${addToTitle} plot ($sel1_20-$sel2_20)" \
-            -legend "Positive Contribution" -lines -linewidth 2 -marker point -linecolor green -fillcolor black]
+            -title "Net Positive and Net Negative Components of Form Factor Weighted ${addToTitle}S(q) ($sel1_20-$sel2_20)" \
+            -legend "Net Positive Component" -lines -linewidth 2 -marker point -linecolor green -fillcolor black]
         $ff_weighted_SQ_plot_pos_neg_contributions add [dict keys $selection_weighted_S_q_pos_contributions] $selection__weighted_S_q_neg_contributions_y \
-            -legend "Negative Contribution" -lines -linewidth 2 -marker point -linecolor red -fillcolor black -plot
+            -legend "Net Negative Component" -lines -linewidth 2 -marker point -linecolor red -fillcolor black -plot
 
         # plot sum of positive and magnitude of negative contributions to forma factor weighted s(q) at each q
         set ff_weighted_S_q_pos_abs_neg_contributions $selection_weighted_S_q_pos_contributions_y
@@ -1907,7 +1907,7 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
             incr k_idx
         }
         set ff_weighted_SQ_plot_pos_abs_neg_contributions [multiplot -x [dict keys $selection_weighted_S_q_pos_contributions] -y $ff_weighted_S_q_pos_abs_neg_contributions \
-            -title "Sum of positive and magnitude of negative contributions for form factor weighted S(q) ${addToTitle} plot ($sel1_20-$sel2_20)" \
+            -title "Sum of Net Positive and Magnitude of Net Negative Components of Form Factor Weighted ${addToTitle}S(q) ($sel1_20-$sel2_20)" \
             -lines -linewidth 2 -marker point -plot ]
         
     }           
@@ -2474,11 +2474,11 @@ proc ::SQGUI::DisplayStatsForSelections {} {
         tk_dialog .errmsg {viewSq Error} "Multiplot is not available." error 0 Dismiss
     } else { 
         # plot rbin contributions to s(q) for the selected q range
-        set selection_rbins_plot [multiplot -x $rbin_x -y $s_q_rbin_contributions_selected_range -title "Selections - contributions to S(q) and Form factor weighted S(q) plot ($sel1_20-$sel2_20)" \
-                                                -legend "S(q)" -nolines -fillcolor red -linecolor red -marker point -radius 2 -plot]
+        set selection_rbins_plot [multiplot -x $rbin_x -y $s_q_rbin_contributions_selected_range -title "Fourier Transform Summands for Parial S(q) and Form Factor Weighted Partial S(q) ($sel1_20-$sel2_20)" \
+                                                -legend "Partial S(q) Summands" -nolines -fillcolor red -linecolor red -marker point -radius 2 -plot]
 
         # plot rbin contributions to form factor weighted s(q) for the selected q range
-        $selection_rbins_plot add $rbin_x $ff_s_q_rbin_contributions_selected_range -nolines -fillcolor blue -legend "Form factor weighted S(q)" -marker square -radius 2 -plot
+        $selection_rbins_plot add $rbin_x $ff_s_q_rbin_contributions_selected_range -nolines -fillcolor blue -legend "Form Factor Weighted Partial S(q) Summands" -marker square -radius 2 -plot
     } 
 
     set numberOfDecimals 3
