@@ -3386,7 +3386,7 @@ proc ::SQGUI::sqgui {args} {
     grid rowconfigure    $w.in2 0 -weight 1 
     #top N contributors frame
     set i $w.in2.topNframe
-    label $i.al -text "Top N Atomic Contributors:" 
+    label $i.al -text "Display Top N Atoms Ranked by Contribution:" 
     scale $i.at -orient horizontal -length 120 -sliderlength 25  -resolution 1 -variable ::SQGUI::topN
     label $i.bl -text "Central Atom (Serial):" 
     scale $i.bt -orient horizontal -length 120 -sliderlength 25  -resolution 1 -variable ::SQGUI::atomsAll
@@ -3403,13 +3403,13 @@ proc ::SQGUI::sqgui {args} {
     #top N atoms or molecules frame
     set i $w.in2.topNOptionframe
     label $i.tmp -text "  "
-    label $i.choosel -text "Visualization Option:"
-    radiobutton $i.dispatoms    -text "Top N Atoms" -variable ::SQGUI::displayAtoms  -value "1"
-    radiobutton $i.dispmolecules -text "Molecules Containing Top N Atoms" -variable ::SQGUI::displayAtoms  -value "0"
+    label $i.choosel -text "Visualize:"
+    radiobutton $i.dispatoms    -text "Top N Atoms Ranked by Contribution" -variable ::SQGUI::displayAtoms  -value "1"
+    radiobutton $i.dispmolecules -text "Molecules Containing Top N Atoms Ranked by Contribution" -variable ::SQGUI::displayAtoms  -value "0"
 
-    label $i.betal -text "Beta Option:"
-    radiobutton $i.betaRank    -text "Rank" -variable ::SQGUI::addBeta  -value "1"
-    radiobutton $i.betaScore -text "Score" -variable ::SQGUI::addBeta  -value "0"
+    label $i.betal -text "When Coloring by Beta:"
+    radiobutton $i.betaRank    -text "Atom Rank" -variable ::SQGUI::addBeta  -value "1"
+    radiobutton $i.betaScore -text "Atom Contribution" -variable ::SQGUI::addBeta  -value "0"
     label $i.tmp1 -text "  "
 
     label $i.al1 -text "Selection 1:" 
@@ -3538,7 +3538,7 @@ proc ::SQGUI::sqgui {args} {
     grid $i.cl1 $i.ct1  $i.cl2 $i.c_cb1 $i.cl3 $i.c_cb2 $i.cl4 $i.c_cb3 $i.cl5 $i.c_cb4 -row 2 -sticky snew
     grid $i.dl1 $i.dt1  $i.dl2 $i.d_cb1 $i.dl3 $i.d_cb2 $i.dl4 $i.d_cb3 $i.dl5 $i.d_cb4 -row 3 -sticky snew
     grid $i.el1 $i.et1  $i.el2 $i.e_cb1 $i.el3 $i.e_cb2 $i.el4 $i.e_cb3 $i.el5 $i.e_cb4 -row 4 -sticky snew
-    grid $i.choosel $i.dispmolecules  $i.dispatoms $i.tmp $i.betal $i.betaRank  $i.betaScore $i.tmp1 -row 5 -sticky snew
+    grid $i.choosel $i.dispatoms $i.dispmolecules $i.tmp $i.betal $i.betaRank  $i.betaScore $i.tmp1 -row 5 -sticky snew
 
     grid columnconfigure $i 0 -weight 2
     grid columnconfigure $i 1 -weight 2
