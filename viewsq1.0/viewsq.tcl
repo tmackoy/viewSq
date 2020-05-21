@@ -2539,9 +2539,9 @@ proc ::SQGUI::DisplayStatsForSelections {} {
     
     set cur_UI $selection_results.in
     set l0 [label $cur_UI.lable_Sq1 -text "          " -justify right -font {helvetica 12 bold}]
-    set l1 [label $cur_UI.lable_Sq2 -text "S(q)" -justify right -font {helvetica 12 bold}]
+    set l1 [label $cur_UI.lable_Sq2 -text "No Form Factor   " -justify right -font {helvetica 12 bold}]
 
-    set l2 [label $cur_UI.lable_Sq3 -text "Form Factor Weighted" -justify left -font {helvetica 12 bold}]
+    set l2 [label $cur_UI.lable_Sq3 -text "Form Factor" -justify left -font {helvetica 12 bold}]
     grid $l0 $l1 $l2 
     grid $l0 $l1 
 
@@ -2551,19 +2551,19 @@ proc ::SQGUI::DisplayStatsForSelections {} {
     grid $l3 $l4 $l5
     grid $l3 $l4 
 
-    set l6 [label $cur_UI.lable_Sq_pos -text "Positive Component (Partial): " -justify right -font {helvetica 12 bold}]
+    set l6 [label $cur_UI.lable_Sq_pos -text "Net Positive Component: " -justify right -font {helvetica 12 bold}]
     set l7 [label $cur_UI.lable_Sq_pos_val1 -text $s_q_pos_val_selected_range -justify left -font {helvetica 12 bold}]
     set l8 [label $cur_UI.lable_Sq_pos_val2 -text $ff_s_q_pos_val_selected_range -justify left -font {helvetica 12 bold}]
     grid $l6 $l7 $l8
     grid $l6 $l7
 
-    set l9 [label $cur_UI.lable_Sq_neg -text "Negative Component (Partial): " -justify right -font {helvetica 12 bold}]
+    set l9 [label $cur_UI.lable_Sq_neg -text "Net Negative Component: " -justify right -font {helvetica 12 bold}]
     set l10 [label $cur_UI.lable_Sq_neg_val1 -text $s_q_neg_val_selected_range -justify left -font {helvetica 12 bold}]
     set l11 [label $cur_UI.lable_Sq_neg_val2 -text $ff_s_q_neg_val_selected_range -justify left -font {helvetica 12 bold}]
     grid $l9 $l10 $l11
     grid $l9 $l10
     
-    set l12 [label $cur_UI.lable_Sq_pos_neg -text "Positive Component + Magnitude of Negative Component: " -justify right -font {helvetica 12 bold}]
+    set l12 [label $cur_UI.lable_Sq_pos_neg -text "Sum of Net Positive and Magnitude of Net Negative Components: " -justify right -font {helvetica 12 bold}]
     set l13 [label $cur_UI.lable_Sq_pos_neg_val1 -text $s_q_pos_neg_val_selected_range -justify left -font {helvetica 12 bold}]
     set l14 [label $cur_UI.lable_Sq_pos_neg_val2 -text $ff_s_q_pos_neg_val_selected_range -justify left -font {helvetica 12 bold}]
     grid $l12 $l13 $l14 
@@ -2571,11 +2571,11 @@ proc ::SQGUI::DisplayStatsForSelections {} {
 
     set labelText ""
     if {$useWhichContribution=="positive"} then {
-        set labelText "Positive Component (Full):"
+        set labelText "Sum of Atom Contributions = Gross Positive Component:"
     } elseif {$useWhichContribution=="negative"} then {
-        set labelText "Negative Component (Full):"
+        set labelText "Sum of Atom Contributions = Gross Negative Component:"
     } else {
-        set labelText "S(q):"
+        set labelText "Sum of Atom Contributions = S(q):"
     } 
     set l15 [label $cur_UI.lable_selected_contribution -text $labelText -justify right -font {helvetica 12 bold}]
     
@@ -2632,7 +2632,17 @@ proc ::SQGUI::DisplayStatsForSelections {} {
          lappend atom_beta_by_Score_Sorted [lindex [lindex $atom_beta_by_Score $i_beta] 1]
      } 
     if {[catch {$bins_plot quit} ]} then {}
-    set rank_plot [multiplot -x $x_bins -y $y_bins -title "Top Contributors" -lines -linewidth 2 -marker point -plot ]  
+
+    set labelText_II ""
+    if {$useWhichContribution=="positive"} then {
+        set labelText_II "Atom Contributions: Positive"
+    } elseif {$useWhichContribution=="negative"} then {
+        set labelText_II "Atom Contributions: Negative"
+    } else {
+        set labelText_II "Atom Contributions:  Net"
+    } 
+    set rank_plot [multiplot -x $x_bins -y $y_bins -title $labelText_II -lines -linewidth 2 -marker point -plot ]
+ 
     $rank_plot add $x_bins $atom_properties
 
     if {$displayAtoms} {
