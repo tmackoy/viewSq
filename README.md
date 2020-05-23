@@ -1,5 +1,9 @@
 viewSq is a utility for calculating, quantifying, and visualizing static structure factors (S(q)) from molecular dynamics (MD) simulations.
 
+A detailed description of the code, as well as a tutorial, can be found on the [wiki](https://github.com/tmackoy/viewSq/wiki)
+
+
+
 
 
 Project name: Your project’s name is the first thing people will see upon scrolling down to your README, and is included upon creation of your README file.
