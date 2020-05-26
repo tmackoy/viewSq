@@ -730,6 +730,7 @@ proc ::SQGUI::runSofQ {} {
     global group_matrices
     global group_bulk_stats
     global group_pair_num_atoms
+    global total_distances_count
     
     variable pi
     variable enableSelections
@@ -755,7 +756,7 @@ proc ::SQGUI::runSofQ {} {
     variable n_frames
     variable density
     variable density_normalized
-    variable total_distances_count
+#    variable total_distances_count
     variable all_distances_count
     variable auto_call
 
@@ -3041,6 +3042,7 @@ proc ::SQGUI::computeRBins {} {
 
     global subGroupPair_counts
     global atoms_groupNames 
+    global total_distances_count
     
 
     variable newSelection1
@@ -3058,7 +3060,12 @@ proc ::SQGUI::computeRBins {} {
     variable distances_due_to_overlap_rbins_sel1_sel2
     variable distances_due_to_non_overlap_rbins_sel1_sel2
     variable percent_distance_rbins_selection_within_box
+    variable count_all_rbins_sel1_sel2 0
+    variable atomPairCount_1
+    variable percent_distance_rbins_selection_within_rmax
 
+
+    set atomPairCount {}
     set sel1 {}
     set sel2 {}
 
@@ -3139,6 +3146,10 @@ proc ::SQGUI::computeRBins {} {
 
 
 
+
+
+
+    # BEGIN COUNTS FOR BOX METRICS
     set num_atoms_minus_one [expr $num_atoms - 1]
     set total_num_distances_in_box [expr $num_atoms * $num_atoms_minus_one / 2]
 
@@ -3168,10 +3179,84 @@ proc ::SQGUI::computeRBins {} {
 
     puts "distances_due_to_non_overlap_rbins_sel1_sel2:  $distances_due_to_non_overlap_rbins_sel1_sel2"
 
- #   set percent_distance_rbins_selection_within_box [expr [expr double($distances_due_to_overlap_rbins_sel1_sel2 / $total_num_distances_in_box) + double($distances_due_to_non_overlap_rbins_sel1_sel2 / $total_num_distances_in_box)]]
     set percent_distance_rbins_selection_within_box [expr 100 * ([expr double($distances_due_to_non_overlap_rbins_sel1_sel2) / double($total_num_distances_in_box)] + [expr double($distances_due_to_overlap_rbins_sel1_sel2) / double($total_num_distances_in_box)])]
 
+    # PRINT FINAL PERCENT FOR BOX METRIC
     puts "percent_distance_rbins_selection_within_box:  $percent_distance_rbins_selection_within_box"
+
+
+
+
+    # BEGIN COUNTS FOR RMAX METRICS
+
+#    foreach i $atom_numbers_sel1 {
+#        foreach j $atom_numbers_sel2 {
+#            set atom_i $i
+#            set atom_j $j
+#            set ele_i [dict get $atoms_groupNames $atom_i]
+#            set ele_i [string range $ele_i 1 [expr [string length $ele_i] -2]]
+#            set ele_j [dict get $atoms_groupNames $atom_j]
+#            set ele_j [string range $ele_j 1 [expr [string length $ele_j] -2]]
+#            set searchKey "\[${ele_i}:${atom_i}\] \[${ele_j}:${atom_j}\]"  
+#            set searchKeyReverse "\[${ele_j}:${atom_j}\] \[${ele_i}:${atom_i}\]"   
+#            if {[dict exists $subGroupPair_counts $searchKey]} {                
+#                set atomPairCount [dict get $subGroupPair_counts $searchKey]
+#                set atomPairCount_1 [lindex $atomPairCount 1]
+#                incr count_all_rbins_sel1_sel2 $atomPairCount_1
+#            }
+#            if {[dict exists $subGroupPair_counts $searchKeyReverse]} {
+#                set atomPairCount [dict get $subGroupPair_counts $searchKeyReverse]
+#                set atomPairCount_1 [lindex $atomPairCount 1]
+#                incr count_all_rbins_sel1_sel2 $atomPairCount_1
+#            }
+#        }
+#    }
+
+        foreach i $atom_numbers_sel1 {
+            foreach j $atom_numbers_sel2 {
+                set atom_i $i
+                set atom_j $j
+                set ele_i [dict get $atoms_groupNames $atom_i]
+                set ele_i [string range $ele_i 1 [expr [string length $ele_i] -2]]
+                set ele_j [dict get $atoms_groupNames $atom_j]
+                set ele_j [string range $ele_j 1 [expr [string length $ele_j] -2]]
+                set searchKey "\[${ele_i}:${atom_i}\] \[${ele_j}:${atom_j}\]"  
+                set searchKeyReverse "\[${ele_j}:${atom_j}\] \[${ele_i}:${atom_i}\]"   
+                if {[dict exists $subGroupPair_counts $searchKey]} {                
+                    set atomPairCount [dict get $subGroupPair_counts $searchKey]
+                    set atomPairCount_1 [lindex $atomPairCount 1]
+                    if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
+                        incr count_all_rbins_sel1_sel2 [expr $atomPairCount_1 / 2]
+                    } else {
+                        incr count_all_rbins_sel1_sel2 [expr $atomPairCount_1]      
+                    }
+                }
+                if {[dict exists $subGroupPair_counts $searchKeyReverse]} {
+                    set atomPairCount [dict get $subGroupPair_counts $searchKeyReverse]
+                    set atomPairCount_1 [lindex $atomPairCount 1]
+ 
+                    if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
+                        incr count_all_rbins_sel1_sel2 [expr $atomPairCount_1 / 2]
+                    } else {
+                        incr count_all_rbins_sel1_sel2 [expr $atomPairCount_1]      
+                    }
+                }
+            }
+        }
+
+    puts "total distances within rmax:  $total_distances_count"
+    puts "count_all_rbins_sel1_sel2:  $count_all_rbins_sel1_sel2"
+
+    set percent_distance_rbins_selection_within_rmax [expr 100 * [expr double($count_all_rbins_sel1_sel2) / double($total_distances_count)]]
+
+    # PRINT FINAL PERCENT FOR BOX METRIC
+    puts "percent_distance_rbins_selection_within_rmax:  $percent_distance_rbins_selection_within_rmax"
+
+
+
+
+
+
 
 }
 
