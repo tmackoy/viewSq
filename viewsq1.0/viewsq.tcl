@@ -3027,10 +3027,21 @@ proc ::SQGUI::UpdateRenderer {val} {
     }
 }
 
+
+
+
+
+
+
+
+
+
+
 proc ::SQGUI::computeRBins {} {
 
     global subGroupPair_counts
     global atoms_groupNames 
+    
 
     variable newSelection1
     variable newSelection2
@@ -3038,9 +3049,15 @@ proc ::SQGUI::computeRBins {} {
     variable delta
     variable molid
     variable rmax
+    variable num_atoms
+    variable num_atoms_minus_one
+    variable total_num_distances_in_box
+    variable num_atoms_rbins_sel1
+    variable num_atoms_rbins_sel2
 
     set sel1 {}
     set sel2 {}
+
 
     # Check if the r-bin atom selections are valid and if so, process them
     if {[catch {atomselect $molid "$newSelection1"} sel1]} then {
@@ -3114,6 +3131,31 @@ proc ::SQGUI::computeRBins {} {
     set ele_j [string range $ele_j 1 [expr [string length $ele_j] -2]]
     set searchKey "\[${ele_i}:${atom_i}\] \[${ele_j}:${atom_j}\]"                    
     # set atomPairCount [dict get $subGroupPair_counts $searchKey]
+
+
+
+
+    set num_atoms_minus_one [expr $num_atoms - 1]
+    set total_num_distances_in_box [expr $num_atoms * $num_atoms_minus_one / 2]
+
+    puts "Total number distances in box:  $total_num_distances_in_box" 
+
+
+    set num_atoms_rbins_sel1 [llength $atom_numbers_sel1]
+    set num_atoms_rbins_sel2 [llength $atom_numbers_sel2]
+
+    puts "Total number atoms in r-bins sel1:  $num_atoms_rbins_sel1"
+    puts "Total number atoms in r-bins sel2:  $num_atoms_rbins_sel2"
+
+
+
+
+
+
+
+
+
+
 }
 
 #################
