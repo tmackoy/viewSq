@@ -3054,6 +3054,10 @@ proc ::SQGUI::computeRBins {} {
     variable total_num_distances_in_box
     variable num_atoms_rbins_sel1
     variable num_atoms_rbins_sel2
+    variable count_overlap_rbins_sel1_sel2 0
+    variable distances_due_to_overlap_rbins_sel1_sel2
+    variable distances_due_to_non_overlap_rbins_sel1_sel2
+    variable percent_distance_rbins_selection_within_box
 
     set sel1 {}
     set sel2 {}
@@ -3147,14 +3151,27 @@ proc ::SQGUI::computeRBins {} {
     puts "Total number atoms in r-bins sel1:  $num_atoms_rbins_sel1"
     puts "Total number atoms in r-bins sel2:  $num_atoms_rbins_sel2"
 
+    foreach id $atom_numbers_sel1 {
+        if {[lsearch -exact $atom_numbers_sel2 $id] >= 0} {
+            incr count_overlap_rbins_sel1_sel2
+        }
+    }
+
+    puts "count_overlap_rbins_sel1_sel2:  $count_overlap_rbins_sel1_sel2"
 
 
+    set distances_due_to_overlap_rbins_sel1_sel2 [expr $count_overlap_rbins_sel1_sel2 * [expr $count_overlap_rbins_sel1_sel2 - 1] / 2]
 
+    puts "distances_due_to_overlap_rbins_sel1_sel2:  $distances_due_to_overlap_rbins_sel1_sel2"
 
+    set distances_due_to_non_overlap_rbins_sel1_sel2 [expr [expr $num_atoms_rbins_sel1 - $count_overlap_rbins_sel1_sel2] * [expr $num_atoms_rbins_sel2 - $count_overlap_rbins_sel1_sel2]]
 
+    puts "distances_due_to_non_overlap_rbins_sel1_sel2:  $distances_due_to_non_overlap_rbins_sel1_sel2"
 
+ #   set percent_distance_rbins_selection_within_box [expr [expr double($distances_due_to_overlap_rbins_sel1_sel2 / $total_num_distances_in_box) + double($distances_due_to_non_overlap_rbins_sel1_sel2 / $total_num_distances_in_box)]]
+    set percent_distance_rbins_selection_within_box [expr 100 * ([expr double($distances_due_to_non_overlap_rbins_sel1_sel2) / double($total_num_distances_in_box)] + [expr double($distances_due_to_overlap_rbins_sel1_sel2) / double($total_num_distances_in_box)])]
 
-
+    puts "percent_distance_rbins_selection_within_box:  $percent_distance_rbins_selection_within_box"
 
 }
 
