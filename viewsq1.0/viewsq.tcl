@@ -3070,6 +3070,8 @@ proc ::SQGUI::computeRBins {} {
     variable count_all_rbins_sel1_sel2 0
     variable atomPairCount_1
     variable percent_distance_rbins_selection_within_rmax
+    variable binCount
+    variable count_all_selected_rbins_sel1_sel2 0
 
 
     set atomPairCount {}
@@ -3122,38 +3124,6 @@ proc ::SQGUI::computeRBins {} {
         }
     }
 
-    # subGroupPair_counts - Dictionary that contains bins and corresponding counts for any atom pair.
-    #   Key format: [<element type from ndx file>:<atom number>] [<element type from ndx file>:<atom number>]
-    #       Example keys: [H:1] [H:12], [H:1] [O:20]
-    #   Value format: {<bin number> <distance count> <bin number> <distance count> ...} only for all non zero count bins 
-    #       Example value: {{10 500}{11 200}}
-
-    ### Refer to ProcessAllsubGroupPairs method for using subGroupPair_counts dictionary
-
-    # foreach subgrp_pair [dict keys $subGroupPair_counts] {
-    #     puts "$subgrp_pair :: [dict get $subGroupPair_counts $subgrp_pair]"
-    #     break
-    # }
-
-    ### Dictionary with atom numbers as keys and element type as value.
-    # $atoms_groupNames
-
-    ### To search for counts of any given pari of atoms say 1, 12:
-    ### 1. Search for element types of 1 and 12 in atoms_groupNames
-    ### 2. Do string concatenations to create the key in the format of [H:1] [H:12]
-    set atom_i 1
-    set atom_j 12
-    set ele_i [dict get $atoms_groupNames $atom_i]
-    set ele_i [string range $ele_i 1 [expr [string length $ele_i] -2]]
-    set ele_j [dict get $atoms_groupNames $atom_j]
-    set ele_j [string range $ele_j 1 [expr [string length $ele_j] -2]]
-    set searchKey "\[${ele_i}:${atom_i}\] \[${ele_j}:${atom_j}\]"                    
-    # set atomPairCount [dict get $subGroupPair_counts $searchKey]
-
-
-
-
-
 
 
     # BEGIN COUNTS FOR BOX METRICS
@@ -3194,33 +3164,7 @@ proc ::SQGUI::computeRBins {} {
 
 
 
-    # BEGIN COUNTS FOR RMAX METRICS
-
-#    foreach i $atom_numbers_sel1 {
-#        foreach j $atom_numbers_sel2 {
-#            set atom_i $i
-#            set atom_j $j
-#            set ele_i [dict get $atoms_groupNames $atom_i]
-#            set ele_i [string range $ele_i 1 [expr [string length $ele_i] -2]]
-#            set ele_j [dict get $atoms_groupNames $atom_j]
-#            set ele_j [string range $ele_j 1 [expr [string length $ele_j] -2]]
-#            set searchKey "\[${ele_i}:${atom_i}\] \[${ele_j}:${atom_j}\]"  
-#            set searchKeyReverse "\[${ele_j}:${atom_j}\] \[${ele_i}:${atom_i}\]"   
-#            if {[dict exists $subGroupPair_counts $searchKey]} {                
-#                set atomPairCount [dict get $subGroupPair_counts $searchKey]
-#                set atomPairCount_1 [lindex $atomPairCount 1]
-#                incr count_all_rbins_sel1_sel2 $atomPairCount_1
-#            }
-#            if {[dict exists $subGroupPair_counts $searchKeyReverse]} {
-#                set atomPairCount [dict get $subGroupPair_counts $searchKeyReverse]
-#                set atomPairCount_1 [lindex $atomPairCount 1]
-#                incr count_all_rbins_sel1_sel2 $atomPairCount_1
-#            }
-#        }
-#    }
-
-        variable binCount
-
+    # BEGIN COUNTS FOR All RBIN METRIC
         foreach i $atom_numbers_sel1 {
             foreach j $atom_numbers_sel2 {
                 set atom_i $i
@@ -3231,9 +3175,6 @@ proc ::SQGUI::computeRBins {} {
                 set ele_j [string range $ele_j 1 [expr [string length $ele_j] -2]]
                 set searchKey "\[${ele_i}:${atom_i}\] \[${ele_j}:${atom_j}\]"  
                 set searchKeyReverse "\[${ele_j}:${atom_j}\] \[${ele_i}:${atom_i}\]"   
-
-
-
 
                 if {[dict exists $subGroupPair_counts $searchKey]} {                
                     set atomPairCount [dict get $subGroupPair_counts $searchKey]
@@ -3248,11 +3189,6 @@ proc ::SQGUI::computeRBins {} {
                         }
                     }
                 }
-
-
-
-
-
 
                 if {[dict exists $subGroupPair_counts $searchKeyReverse]} {
                     set atomPairCount [dict get $subGroupPair_counts $searchKeyReverse]
@@ -3276,8 +3212,84 @@ proc ::SQGUI::computeRBins {} {
 
     set percent_distance_rbins_selection_within_rmax [expr 100 * [expr double($count_all_rbins_sel1_sel2) / double($total_distances_count)]]
 
-    # PRINT FINAL PERCENT FOR BOX METRIC
+    # PRINT FINAL PERCENT FOR All RBIN METRIC
     puts "percent_distance_rbins_selection_within_rmax:  $percent_distance_rbins_selection_within_rmax"
+
+
+
+
+
+
+
+
+
+
+    # BEGIN COUNTS FOR USER-SELECTED RBIN METRIC
+        foreach i $atom_numbers_sel1 {
+            foreach j $atom_numbers_sel2 {
+                set atom_i $i
+                set atom_j $j
+                set ele_i [dict get $atoms_groupNames $atom_i]
+                set ele_i [string range $ele_i 1 [expr [string length $ele_i] -2]]
+                set ele_j [dict get $atoms_groupNames $atom_j]
+                set ele_j [string range $ele_j 1 [expr [string length $ele_j] -2]]
+                set searchKey "\[${ele_i}:${atom_i}\] \[${ele_j}:${atom_j}\]"  
+                set searchKeyReverse "\[${ele_j}:${atom_j}\] \[${ele_i}:${atom_i}\]"   
+
+                if {[dict exists $subGroupPair_counts $searchKey]} {                
+                    set atomPairCount [dict get $subGroupPair_counts $searchKey]
+
+                    foreach key [dict keys $atomPairCount] {
+                        if {[lsearch -exact $binsOfInterest $key] >=0} {
+                        set binCount [dict get $atomPairCount $key]
+                        if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
+                            incr count_all_selected_rbins_sel1_sel2 [expr $binCount / 2]
+                        } else {
+                            incr count_all_selected_rbins_sel1_sel2 [expr $binCount]      
+                        }
+                        }
+                    }
+                }
+
+                if {[dict exists $subGroupPair_counts $searchKeyReverse]} {
+                    set atomPairCount [dict get $subGroupPair_counts $searchKeyReverse]
+
+                    foreach key [dict keys $atomPairCount] {
+                        if {[lsearch -exact $binsOfInterest $key] >=0} {
+                        set binCount [dict get $atomPairCount $key]
+                        if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
+                            incr count_all_selected_rbins_sel1_sel2 [expr $binCount / 2]
+                        } else {
+                            incr count_all_selected_rbins_sel1_sel2 [expr $binCount]      
+                        }
+                        }
+                    }
+                }
+            }
+        }
+
+    puts "total distances within rmax:  $total_distances_count"
+    puts "count_all_selected_rbins_sel1_sel2:  $count_all_selected_rbins_sel1_sel2"
+
+    set percent_distance_selected_rbins_selection_within_rmax [expr 100 * [expr double($count_all_selected_rbins_sel1_sel2) / double($total_distances_count)]]
+
+    # PRINT FINAL PERCENT FOR USER-SELECTED RBIN METRIC
+    puts "percent_distance_selected_rbins_selection_within_rmax:  $percent_distance_selected_rbins_selection_within_rmax"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
