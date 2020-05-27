@@ -3219,6 +3219,8 @@ proc ::SQGUI::computeRBins {} {
 #        }
 #    }
 
+        variable binCount
+
         foreach i $atom_numbers_sel1 {
             foreach j $atom_numbers_sel2 {
                 set atom_i $i
@@ -3229,23 +3231,41 @@ proc ::SQGUI::computeRBins {} {
                 set ele_j [string range $ele_j 1 [expr [string length $ele_j] -2]]
                 set searchKey "\[${ele_i}:${atom_i}\] \[${ele_j}:${atom_j}\]"  
                 set searchKeyReverse "\[${ele_j}:${atom_j}\] \[${ele_i}:${atom_i}\]"   
+
+
+
+
                 if {[dict exists $subGroupPair_counts $searchKey]} {                
                     set atomPairCount [dict get $subGroupPair_counts $searchKey]
-                    set atomPairCount_1 [lindex $atomPairCount 1]
-                    if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
-                        incr count_all_rbins_sel1_sel2 [expr $atomPairCount_1 / 2]
-                    } else {
-                        incr count_all_rbins_sel1_sel2 [expr $atomPairCount_1]      
+
+
+                    foreach key [dict keys $atomPairCount] {
+                        set binCount [dict get $atomPairCount $key]
+                        if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
+                            incr count_all_rbins_sel1_sel2 [expr $binCount / 2]
+                        } else {
+                            incr count_all_rbins_sel1_sel2 [expr $binCount]      
+                        }
                     }
                 }
+
+
+
+
+
+
                 if {[dict exists $subGroupPair_counts $searchKeyReverse]} {
                     set atomPairCount [dict get $subGroupPair_counts $searchKeyReverse]
-                    set atomPairCount_1 [lindex $atomPairCount 1]
- 
-                    if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
-                        incr count_all_rbins_sel1_sel2 [expr $atomPairCount_1 / 2]
-                    } else {
-                        incr count_all_rbins_sel1_sel2 [expr $atomPairCount_1]      
+
+
+
+                    foreach key [dict keys $atomPairCount] {
+                        set binCount [dict get $atomPairCount $key]
+                        if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
+                            incr count_all_rbins_sel1_sel2 [expr $binCount / 2]
+                        } else {
+                            incr count_all_rbins_sel1_sel2 [expr $binCount]      
+                        }
                     }
                 }
             }
