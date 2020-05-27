@@ -756,7 +756,7 @@ proc ::SQGUI::runSofQ {} {
     variable n_frames
     variable density
     variable density_normalized
-#    variable total_distances_count
+    # variable total_distances_count
     variable all_distances_count
     variable auto_call
 
@@ -2203,23 +2203,30 @@ proc ::SQGUI::computeSelections {} {
                         
                         set counts [dict create]
                         set hasCounts 0
+                        set useHalfCount 0
                         if { [dict exists $subGroupPair_counts $subgrp_pair] ==1 } then {                       
                             set counts [dict get $subGroupPair_counts $subgrp_pair]     
                             set hasCounts 1
+                            if { [lsearch -exact $atom_numbers_sel1 $atom_j] >=0 && [lsearch -exact $atom_numbers_sel2 $atom_i] >=0} {
+                                set useHalfCount 1
+                            }
                         } elseif { [dict exists $subGroupPair_counts $subgrp_pair_reverse] ==1 } then {
                             set counts [dict get $subGroupPair_counts $subgrp_pair_reverse]         
                             set hasCounts 1
+                            if { [lsearch -exact $atom_numbers_sel1 $atom_j] >=0 && [lsearch -exact $atom_numbers_sel2 $atom_i] >=0} {
+                                set useHalfCount 1
+                            }
                         }
 
                         # Keep a running sum of counts for selections
                         if {$hasCounts ==1} then {
-                            if {$selection1!=$selection2} {
-                                set selectionDistances [expr $selectionDistances + [ladd [dict values $counts]]]
-                            } else {
+                            if {$useHalfCount} {
                                 set selectionDistances [expr $selectionDistances + [expr [ladd [dict values $counts]]/2]]
                                 foreach key [dict keys $counts] {
                                     dict set counts $key [expr [dict get $counts $key]/2]
                                 }
+                            } else {
+                                set selectionDistances [expr $selectionDistances + [ladd [dict values $counts]]]                                
                             }
                             
                             if { [dict exists $selection_groups_counts $grp_pair] ==1 } then {
