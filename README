@@ -12,6 +12,9 @@ If you use viewSq in regards to a publication, please cite:
 &&&&&&&&&&&&&&&&&&&&&&&&&
 
 list of files with simple and brief description
+*** describe directory structure
+
+
 Calculate_rdf_stats_py.py --  
 
 
@@ -39,6 +42,7 @@ installation - steps to install python and viewSq on all suported OS
 
 Running viewSq - steps to follow while running viewSq. If we are giving a seprate file that has the description of a test run we can point to that file.
 
+add brief example (water frame) initial run + selections
 
 
 
