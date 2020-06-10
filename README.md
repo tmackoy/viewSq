@@ -8,7 +8,52 @@ A detailed description of the code, as well as a [tutorial](https://github.com/t
 
 Installation
 ===============
-Installation is the next section in an effective README. Tell other users how to install your project locally. Optionally, include a gif to make the process even more clear for other people.
+### LINUX ###
+
+
+1. Add the following line to /usr/local/lib/vmd/scripts/vmd/loadplugins.tcl
+
+vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
+
+2. Copy the folder "viewsq1.0" to /usr/local/lib/vmd/plugins/noarch/tcl
+
+3. Copy the file "Calculate_rdf_stats_py.py" to /usr/local/lib/vmd/scripts/python
+
+Invoke VMD and look for the plug-in under Extensions->Analysis. 
+
+
+### MAC ###
+
+Due to memory restrictions, in order to reasonably use viewSq with over ~10,000 atoms in Mac OS you will probably want to compile a 64-bit VMD version. The VMD website may offer some 64-bit pre-compiled versions which can be downloaded.
+
+
+1. Add the following line to /Applications/VMD 1.9.3.app/Contents/vmd/scripts/loadplugins.tcl
+
+vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
+
+2. Copy the folder "viewsq1.0" to /Applications/VMD 1.9.3.app/Contents/vmd/plugins/noarch/tcl
+
+3. Copy the file "Calculate_rdf_stats_py.py" to /Applications/VMD 1.9.3.app/Contents/vmd/scripts/python
+
+Ensure Python 3.* is the default python.
+
+
+### WINDOWS ###
+
+Due to memory restrictions, in order to reasonably use viewSq with over ~10,000 atoms in Windows you will probably want to compile a 64-bit VMD version. The VMD website may offer some 64-bit pre-compiled versions which can be downloaded.
+
+
+1. Add the following line to \VMD\scripts\vmd\loadplugins.tcl
+
+vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
+
+2. Copy the folder "viewsq1.0" to \VMD\plugins\noarch\tcl
+
+3. Copy the file "Calculate_rdf_stats_py.py" to \VMD\scripts\vmd
+
+Invoke VMD and look for the plug-in under Extensions->Analysis. When running viewSq, VMD may require you to specify the location of the Python script from step #3.
+
+Ensure Python 3.* is in the Windows path.
 
 
 Usage
