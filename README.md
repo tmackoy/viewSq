@@ -51,14 +51,16 @@ vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
 
 3. Copy the file "Calculate_rdf_stats_py.py" to \VMD\scripts\vmd
 
-Invoke VMD and look for the plug-in under Extensions->Analysis. When running viewSq, VMD may require you to specify the location of the Python script from step #3.
+ When running viewSq, VMD may require you to specify the location of the Python script from step #3.
 
 Ensure Python 3.* is in the Windows path.
 
 
 Usage
 ===============
-The next section is usage, in which you instruct other people on how to use your project after they’ve installed it. This would also be a good place to include screenshots of your project in action.
+Invoke VMD and look for the plug-in (viewSq) under Extensions->Analysis.
+
+A detailed description of the code, as well as a [tutorial](https://github.com/tmackoy/viewSq/wiki/Tutorial:--Water), can be found on the [wiki](https://github.com/tmackoy/viewSq/wiki)
 
 
 License
