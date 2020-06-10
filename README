@@ -1,13 +1,17 @@
-# viewSq
+&&&&&&&&&&&&&&
+&&& viewSq &&&
+&&&&&&&&&&&&&&
 
-Program submission. Manuscripts that describe computer programs and NVAs must be accompanied
-by: the program source code; job control scripts, where applicable; a README file giving the names and a brief description of all the files that make up the package and clear instructions on the installation and execution of the program; sample input and output data for at least one comprehensive test run that will convince the reviewers that the program operates as specified; and, where appropriate, a user manual.
+viewSq is a utility for calculating, analyzing, and visualizing static structure factors (S(q)) from molecular dynamics (MD) simulations.
+
+If you use viewSq in regards to a publication, please cite: 
 
 
-A compressed archive program file or files, containing these items, should be uploaded at the "Attach Files" stage of the EES submission. The maximum file size allowed is 700Mb. For files larger than this the author should contact the Technical Editor at cpc.mendeley@gmail.com.
+&&&&&&&&&&&&&&&&&&&&&&&&&
+&&& FILE DESCRIPTIONS &&&
+&&&&&&&&&&&&&&&&&&&&&&&&&
 
-#### FILE DESCRIPTIONS
-
+list of files with simple and brief description
 Calculate_rdf_stats_py.py --  
 
 
@@ -20,10 +24,26 @@ form_factors.csv --
 viewsq.tcl --
 
 
-#### INSTALLATION
+&&&&&&&&&&&&&&&&&&&&
+&&& INSTALLATION &&&
+&&&&&&&&&&&&&&&&&&&&
+
+installation - steps to install python and viewSq on all suported OS
 
 
-##### LINUX
+&&&&&&&&&&&&&&&&&&
+&&& Run viewSq &&&
+&&&&&&&&&&&&&&&&&&
+
+
+
+Running viewSq - steps to follow while running viewSq. If we are giving a seprate file that has the description of a test run we can point to that file.
+
+
+
+
+
+LINUX
 
 
 1. Add the following line to /usr/local/lib/vmd/scripts/vmd/loadplugins.tcl
@@ -35,7 +55,7 @@ viewsq.tcl --
 
 Invoke VMD and look for the plug-in under Extensions->Analysis. 
 
-##### MAC
+MAC
 
 Due to memory restrictions, in order to reasonably use viewSq with over perhaps 10,000 atoms in Mac OS you will probably want to compile a 64-bit VMD version. The VMD website may offer some 64-bit pre-compiled versions which can be downloaded.
 
@@ -49,7 +69,7 @@ Due to memory restrictions, in order to reasonably use viewSq with over perhaps 
 
 Ensure Python 3.* is the default python.
 
-##### WINDOWS
+WINDOWS
 
 Due to memory restrictions, in order to reasonably use viewSq with over perhaps 10,000 atoms in Windows you will probably want to compile a 64-bit VMD version. The VMD website may offer some 64-bit pre-compiled versions which can be downloaded.
 
