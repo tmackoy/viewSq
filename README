@@ -1,3 +1,9 @@
+Journal instructions:  Program submission. Manuscripts that describe computer programs and NVAs must be accompanied
+by: the program source code; a README file giving the names and a brief description of the files/
+directory structure that make up the package and clear instructions on the installation and execution of
+the program; sample input and output data for at least one comprehensive test run that will convince
+the reviewers that the program operates as specified; and, where appropriate, a user manual. 
+
 &&&&&&&&&&&&&&
 &&& viewSq &&&
 &&&&&&&&&&&&&&
