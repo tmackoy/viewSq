@@ -40,6 +40,28 @@ If you publish work which used viewSq, please cite:
 /viewSq/LICENSE -- Text file containing viewSq license.
 
 
+The below files are generated upon using viewSq (e.g. the tutorial or below quickstart guide).
+
+
+/viewSq/tutorials/spce_water/Selected_Frames_Coordinates.dat -- 
+
+/viewSq/tutorials/spce_water/GofRValues.txt -- 
+
+/viewSq/tutorials/spce_water/r_contributions_total_sq.dat -- 
+
+/viewSq/tutorials/spce_water/neighbour_contributions_sq.dat --
+
+/viewSq/tutorials/spce_water/neighbour_contributions_ff_sq.dat -- 
+
+/viewSq/tutorials/spce_water/neighbour_positive_contributions_sq.dat -- 
+
+/viewSq/tutorials/spce_water/neighbour_positive_contributions_ff_sq.dat -- 
+
+/viewSq/tutorials/spce_water/neighbour_negative_contributions_sq.dat -- 
+
+/viewSq/tutorials/spce_water/neighbour_negative_contributions_ff_sq.dat -- 
+
+
 &&&&&&&&&&&&&&&&&&&&
 &&& INSTALLATION &&&
 &&&&&&&&&&&&&&&&&&&&
@@ -111,8 +133,8 @@ viewSq is run using a graphical user interface which is accessible within VMD.
 
 4.  In the viewSq GUI select “(none)” next to “Molecule:” and choose “0 spce_10_frames.pdb”.
 
-5.  For “g(r) settings:” set “Frames:” as “First: 0”, “Last: 0”, and “Step: 1”. For “Histogram Parameters:” set “Delta r [Å]: 0.1” and “Max r [Å]: 5.0”. For “S(q) settings:” set “Min q [Å-1]: 2.0”, “Max q [Å-1]: 3.5”, and “Delta q [Å-1]: 0.1”. Leave all other settings as default.
+5.  For “g(r) settings:” set “Frames:” as “First: 0”, “Last: -1”, and “Step: 1”. For “Histogram Parameters:” set “Delta r [Å]: 0.1” and “Max r [Å]: 5.0”. For “S(q) settings:” set “Min q [Å-1]: 2.0”, “Max q [Å-1]: 3.5”, and “Delta q [Å-1]: 0.1”. Leave all other settings as default.
 
-6.  Press "Compute S(q)". Wait a few minutes.
+6.  Press "Compute S(q)". Wait a few minutes, following atom count progress printed to terminal.
 
 7.  When the calculation from Step #6 completes, six windows containing plots will appear (e.g. radial distribution function, S(q) with and without form factors, etc.).  The "Selections" portion of the GUI also becomes accessible. 
