@@ -14,26 +14,38 @@ If you publish work which uses viewSq, please cite:
 &&& FILE DESCRIPTIONS &&&
 &&&&&&&&&&&&&&&&&&&&&&&&&
 
+/viewSq/python/Calculate_rdf_stats_py.py -- Python file which performs initial viewSq calculations (e.g. radial distribution function)
 
-list of files with simple and brief description
-*** describe directory structure
+/viewSq/viewsq1.0/viewsq.tcl -- Tcl file containing all viewSq code not present in Calculate_rdf_stats_py.py
 
+/viewSq/viewsq1.0/pkgIndex.tcl -- Tcl file required to integrate viewSq into VMD GUI
 
-Calculate_rdf_stats_py.py --  
-
-
-pkgIndex.tcl -- 
+/viewSq/viewsq1.0/
 
 
 form_factors.csv -- 
 
 
-viewsq.tcl --
+
+
+/viewSq/README -- Text file containing viewSq overview, installation and usage instructions, etc.
+
+/viewSq/README.md -- Markdown file containing contents of Github README
+
+/viewSq/LICENSE -- Text file containing viewSq license
 
 
 &&&&&&&&&&&&&&&&&&&&
 &&& INSTALLATION &&&
 &&&&&&&&&&&&&&&&&&&&
+
+
+VMD
+
+
+VMD must be installed prior to using viewSq. The VMD website may offer some 64-bit (strongly recommended) pre-compiled versions which can be downloaded:  https://www.ks.uiuc.edu/Development/Download/download.cgi?PackageName=VMD
+
+There are installation instructions in the VMD README file. Typical installation instructions on a Linux machine are: using a terminal, run "./configure" from the main folder, then "cd src/", and finally (as sudo user) run "make install". VMD should now be installed and can be run in a terminal by typing "vmd".
 
 
 LINUX
@@ -49,11 +61,11 @@ vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
 
 Invoke VMD and look for the plug-in under Extensions->Analysis. 
 
+Ensure Python 3.* is the default python.
+
 
 MAC
 
-
-Due to memory restrictions, in order to reasonably use viewSq with over perhaps 10,000 atoms in Mac OS you will probably want to use a 64-bit VMD version. The VMD website may offer some 64-bit pre-compiled versions which can be downloaded.
 
 1. Add the following line to /Applications/VMD 1.9.3.app/Contents/vmd/scripts/loadplugins.tcl
 
@@ -67,9 +79,6 @@ Ensure Python 3.* is the default python.
 
 
 WINDOWS
-
-
-Due to memory restrictions, in order to reasonably use viewSq with over perhaps 10,000 atoms in Windows you will probably want to use a 64-bit VMD version. The VMD website may offer some 64-bit pre-compiled versions which can be downloaded.
 
 
 1. Add the following line to \VMD\scripts\vmd\loadplugins.tcl
