@@ -5,42 +5,44 @@
 &&&&&&&&&&&&&&&&&&
 
 
-viewSq is a utility for calculating, analyzing, and visualizing static structure factors (S(q)) from molecular dynamics (MD) simulations.
+viewSq is a utility for calculating, analyzing, and visualizing static structure factors (S(q)) from trajectories produced using molecular dynamics (MD) or Monte Carlo (MC) simulations.
 
-If you publish work which uses viewSq, please cite: 
+viewSq is copyrighted under the MIT license.
+
+If you publish work which used viewSq, please cite: 
 
 
 &&&&&&&&&&&&&&&&&&&&&&&&&
 &&& FILE DESCRIPTIONS &&&
 &&&&&&&&&&&&&&&&&&&&&&&&&
 
-/viewSq/python/Calculate_rdf_stats_py.py -- Python file which performs initial viewSq calculations (e.g. radial distribution function)
 
-/viewSq/viewsq1.0/viewsq.tcl -- Tcl file containing all viewSq code not present in Calculate_rdf_stats_py.py
+/viewSq/python/Calculate_rdf_stats_py.py -- Python file which performs initial viewSq calculations (e.g. code for radial distribution function calculations).
 
-/viewSq/viewsq1.0/pkgIndex.tcl -- Tcl file required to integrate viewSq into VMD GUI
+/viewSq/viewsq1.0/viewsq.tcl -- Tcl file containing all viewSq code not present in Calculate_rdf_stats_py.py (e.g. code for static structure factor calculations, user interface, queries to VMD).
 
-/viewSq/viewsq1.0/
+/viewSq/viewsq1.0/pkgIndex.tcl -- Tcl file required to integrate viewSq into VMD GUI.
 
+/viewSq/viewsq1.0/form_factors_neutron.csv -- CSV file containing neutron form factor parameters.
 
-form_factors.csv -- 
+/viewSq/viewsq1.0/form_factors_xray.csv -- CSV file containing X-ray form factor parameters.
 
+/viewSq/tutorials/spce_water/spce_final_frame.pdb -- PDB structure file containing the x,y,z coordinates of 3000 water atoms (i.e. 1000 water molecules). The coordinates were obtained from a single snapshot of a molecular dynamics simulation of SPC/E water.
 
+/viewSq/tutorials/spce_water/elements.ndx -- Gromacs stype NDX file defining whether each of the 3000 water atoms are Hydrogen or Oxygen). This file is required for viewSq to perform its form factor weighted calculations, and a properly configured version of it must always accompany a simulation processed by viewSq.
 
+/viewSq/tutorial.pdf -- PDF file containing instructions for running the included tutorial (single frame of SPC/E water).
 
 /viewSq/README -- Text file containing viewSq overview, installation and usage instructions, etc.
 
-/viewSq/README.md -- Markdown file containing contents of Github README
+/viewSq/README.md -- Markdown file containing contents of Github README.
 
-/viewSq/LICENSE -- Text file containing viewSq license
+/viewSq/LICENSE -- Text file containing viewSq license.
 
 
 &&&&&&&&&&&&&&&&&&&&
 &&& INSTALLATION &&&
 &&&&&&&&&&&&&&&&&&&&
-
-
-VMD
 
 
 VMD must be installed prior to using viewSq. The VMD website may offer some 64-bit (strongly recommended) pre-compiled versions which can be downloaded:  https://www.ks.uiuc.edu/Development/Download/download.cgi?PackageName=VMD
@@ -61,10 +63,10 @@ vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
 
 Invoke VMD and look for the plug-in under Extensions->Analysis. 
 
-Ensure Python 3.* is the default python.
+Ensure Python 3.* is the default.
 
 
-MAC
+OSX
 
 
 1. Add the following line to /Applications/VMD 1.9.3.app/Contents/vmd/scripts/loadplugins.tcl
@@ -75,7 +77,7 @@ vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
 
 3. Copy the file "Calculate_rdf_stats_py.py" to /Applications/VMD 1.9.3.app/Contents/vmd/scripts/python
 
-Ensure Python 3.* is the default python.
+Ensure Python 3.* is the default.
 
 
 WINDOWS
@@ -89,16 +91,28 @@ vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
 
 3. Copy the file "Calculate_rdf_stats_py.py" to \VMD\scripts\vmd
 
-Invoke VMD and look for the plug-in under Extensions->Analysis. When running viewSq, VMD may require you to specify the location of the Python script from step #3.
-Ensure Python 3.* is in the Windows path.
+Invoke VMD and look for the plug-in under Extensions->Analysis. When running viewSq, VMD may require you to specify the location of the Python script from step #3. Ensure Python 3.* is in the Windows path.
 
 
-&&&&&&&&&&&&&&&&&&
-&&& Run viewSq &&&
-&&&&&&&&&&&&&&&&&&
+&&&&&&&&&&&&&&&&&&&&&&&&
+&&& QUICKSTART GUIDE &&&
+&&&&&&&&&&&&&&&&&&&&&&&&
 
 
-** As per journal requirements, add brief instructions for running SPC/E water example included with distribution -- and clear instructions on the installation and execution of
-the program; sample input and output data for at least one comprehensive test run that will convince
-the reviewers that the program operates as specified
+Detailed instructions for using viewSq can be found in /viewSq/tutorial.pdf.
 
+viewSq is run using a graphical user interface which is accessible within VMD.
+
+1.  Open VMD.
+
+2.  In the VMD Main window select File, New Molecule…, which will open the Molecule File Browser. From the new window click Browse…, and select spce_final_frame.pdb (found in /viewSq/tutorials/spce_water/spce_final_frame.pdb). VMD should automatically determine the file type to be PDB, however if it does not, select PDB from the drop down menu. Make sure Frames: are set to First 0, Last -1, and Step 1. Select the “Load all at once” radio button, and then press “Load”. The VMD Display window should display the water box. Close Molecule File Browser window.
+
+3.  In the main VMD window, select Extensions, Analysis, viewSq. This opens the viewSq GUI.
+
+4.  In the viewSq GUI select “(none)” next to “Molecule:” and choose “0 spce_10_frames.pdb”.
+
+5.  For “g(r) settings:” set “Frames:” as “First: 0”, “Last: 0”, and “Step: 1”. For “Histogram Parameters:” set “Delta r [Å]: 0.1” and “Max r [Å]: 5.0”. For “S(q) settings:” set “Min q [Å-1]: 2.0”, “Max q [Å-1]: 3.5”, and “Delta q [Å-1]: 0.1”. Leave all other settings as default.
+
+6.  Press "Compute S(q)". Wait a few minutes.
+
+7.  When the calculation from Step #6 completes, six windows containing plots will appear (e.g. radial distribution function, S(q) with and without form factors, etc.).  The "Selections" portion of the GUI also becomes accessible. 
