@@ -1,7 +1,7 @@
 viewSq
 ===============
 
-viewSq is a utility for calculating, analyzing, and visualizing static structure factors (S(q)) from molecular dynamics (MD) simulations.
+viewSq is a utility for calculating, analyzing, and visualizing static structure factors (S(q)) from trajectories produced using molecular dynamics (MD) or Monte Carlo (MC) simulations.
 
 A detailed description of the code, as well as a [tutorial](https://github.com/tmackoy/viewSq/wiki/Tutorial:--Water), can be found on the [wiki](https://github.com/tmackoy/viewSq/wiki)
 
@@ -22,7 +22,7 @@ vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
 Invoke VMD and look for the plug-in under Extensions->Analysis. 
 
 
-### MAC ###
+### OSX ###
 
 Due to memory restrictions, in order to reasonably use viewSq with over ~10,000 atoms in Mac OS you will probably want to compile a 64-bit VMD version. The VMD website may offer some 64-bit pre-compiled versions which can be downloaded.
 
