@@ -3136,8 +3136,8 @@ proc ::SQGUI::computeRBins {} {
     set num_atoms_rbins_sel1 [llength $atom_numbers_sel1]
     set num_atoms_rbins_sel2 [llength $atom_numbers_sel2]
 
-    puts "Total number atoms in r-bins sel1:  $num_atoms_rbins_sel1"
-    puts "Total number atoms in r-bins sel2:  $num_atoms_rbins_sel2"
+    puts "Total number atoms in r-bins module selection 1:  $num_atoms_rbins_sel1"
+    puts "Total number atoms in r-bins module selection 2:  $num_atoms_rbins_sel2"
 
     foreach id $atom_numbers_sel1 {
         if {[lsearch -exact $atom_numbers_sel2 $id] >= 0} {
@@ -3145,22 +3145,21 @@ proc ::SQGUI::computeRBins {} {
         }
     }
 
-    puts "count_overlap_rbins_sel1_sel2:  $count_overlap_rbins_sel1_sel2"
+    puts "Total number of atoms in intersection of selections 1 & 2:  $count_overlap_rbins_sel1_sel2"
 
 
     set distances_due_to_overlap_rbins_sel1_sel2 [expr $count_overlap_rbins_sel1_sel2 * [expr $count_overlap_rbins_sel1_sel2 - 1] / 2]
 
-    puts "distances_due_to_overlap_rbins_sel1_sel2:  $distances_due_to_overlap_rbins_sel1_sel2"
+#    puts "distances_due_to_overlap_rbins_sel1_sel2:  $distances_due_to_overlap_rbins_sel1_sel2"
 
     set distances_due_to_non_overlap_rbins_sel1_sel2 [expr [expr $num_atoms_rbins_sel1 - $count_overlap_rbins_sel1_sel2] * [expr $num_atoms_rbins_sel2 - $count_overlap_rbins_sel1_sel2]]
 
-    puts "distances_due_to_non_overlap_rbins_sel1_sel2:  $distances_due_to_non_overlap_rbins_sel1_sel2"
+#    puts "distances_due_to_non_overlap_rbins_sel1_sel2:  $distances_due_to_non_overlap_rbins_sel1_sel2"
 
     set percent_distance_rbins_selection_within_box [expr 100 * ([expr double($distances_due_to_non_overlap_rbins_sel1_sel2) / double($total_num_distances_in_box)] + [expr double($distances_due_to_overlap_rbins_sel1_sel2) / double($total_num_distances_in_box)])]
 
     # PRINT FINAL PERCENT FOR BOX METRIC
-    puts "percent_distance_rbins_selection_within_box:  $percent_distance_rbins_selection_within_box"
-
+    puts "***Percent selected distance types out of all distances in box***:  $percent_distance_rbins_selection_within_box"
 
 
 
@@ -3207,20 +3206,13 @@ proc ::SQGUI::computeRBins {} {
             }
         }
 
-    puts "total distances within rmax:  $total_distances_count"
-    puts "count_all_rbins_sel1_sel2:  $count_all_rbins_sel1_sel2"
+    puts "Total distances within rmax:  $total_distances_count"
+    puts "Count of selected distances within rmax:  $count_all_rbins_sel1_sel2"
 
     set percent_distance_rbins_selection_within_rmax [expr 100 * [expr double($count_all_rbins_sel1_sel2) / double($total_distances_count)]]
 
     # PRINT FINAL PERCENT FOR All RBIN METRIC
-    puts "percent_distance_rbins_selection_within_rmax:  $percent_distance_rbins_selection_within_rmax"
-
-
-
-
-
-
-
+    puts "***Percent selected distance types represent out of all distances within rmax***:  $percent_distance_rbins_selection_within_rmax"
 
 
 
@@ -3268,33 +3260,13 @@ proc ::SQGUI::computeRBins {} {
             }
         }
 
-    puts "total distances within rmax:  $total_distances_count"
-    puts "count_all_selected_rbins_sel1_sel2:  $count_all_selected_rbins_sel1_sel2"
+#    puts "total distances within rmax:  $total_distances_count"
+    puts "Count of selected distances within selected r-bins:  $count_all_selected_rbins_sel1_sel2"
 
-    set percent_distance_selected_rbins_selection_within_rmax [expr 100 * [expr double($count_all_selected_rbins_sel1_sel2) / double($total_distances_count)]]
+    set percent_distance_selected_rbins_selection_within_rbins [expr 100 * [expr double($count_all_selected_rbins_sel1_sel2) / double($total_distances_count)]]
 
     # PRINT FINAL PERCENT FOR USER-SELECTED RBIN METRIC
-    puts "percent_distance_selected_rbins_selection_within_rmax:  $percent_distance_selected_rbins_selection_within_rmax"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    puts "***Percent of selected distances within selected r-bins***:  $percent_distance_selected_rbins_selection_within_rbins"
 
 
 }
