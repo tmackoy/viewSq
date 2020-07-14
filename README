@@ -109,7 +109,7 @@ vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
 
 2. Copy the folder "viewsq1.0" to \VMD\plugins\noarch\tcl
 
-3. Copy the file "Calculate_rdf_stats_py.py" to \VMD\scripts\vmd
+3. Copy the file "Calculate_rdf_stats_py.py" to \VMD\scripts\python (the folder may need to be created manually)
 
 Invoke VMD and look for the plug-in under Extensions->Analysis. When running viewSq, VMD may require you to specify the location of the Python script from step #3. Ensure Python 3.* is in the Windows path.
 
