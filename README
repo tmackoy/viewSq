@@ -67,7 +67,7 @@ The below files are generated upon using viewSq (e.g. the tutorial or below quic
 
 VMD must be installed prior to using viewSq. The VMD website may offer some 64-bit (strongly recommended) pre-compiled versions which can be downloaded:  https://www.ks.uiuc.edu/Development/Download/download.cgi?PackageName=VMD
 
-There are installation instructions in the VMD README file. Typical installation instructions on a Linux machine are: using a terminal, run "./configure" from the main folder, then "cd src/", and finally (as sudo user) run "make install". VMD should now be installed and can be run in a terminal by typing "vmd".
+There are installation instructions in the VMD README file or here: https://www.ks.uiuc.edu/Research/vmd/current/ig/node6.html. Typical installation instructions on a Linux machine are: using a terminal, run "./configure" from the main folder, then "cd src/", and finally (as sudo user) run "make install". VMD should now be installed and can be run in a terminal by typing "vmd".
 
 
 LINUX
