@@ -2721,6 +2721,7 @@ proc ::SQGUI::UpdateRenderer {val} {
     variable atom_beta_by_Score
     variable molecule_beta_by_Rank
     variable molecule_beta_by_Score
+    variable rankDescending
 
     set selected_atoms "serial"
     set selected_atom [$w.in2.topNframe.bt get]
@@ -2824,7 +2825,12 @@ proc ::SQGUI::UpdateRenderer {val} {
         }
         close $tstfile
 
-        set topN_Neighbours_Sorted [lsort -real -index 1 -decreasing $topN_list]
+        set topN_Neighbours_Sorted {}
+        if {$rankDescending==1} then {
+            set topN_Neighbours_Sorted [lsort -real -index 1 -decreasing $topN_list]
+        } else {
+            set topN_Neighbours_Sorted [lsort -real -index 1 -increasing $topN_list]
+        }
         set cntr 0
         set sorted_atoms "serial "
         set atom_properties {}
