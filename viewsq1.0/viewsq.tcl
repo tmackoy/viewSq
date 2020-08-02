@@ -3072,6 +3072,7 @@ proc ::SQGUI::computeRBins {} {
     variable percent_distance_rbins_selection_within_rmax
     variable binCount
     variable count_all_selected_rbins_sel1_sel2 0
+    variable count_all_selected_rbins 0
 
 
     set atomPairCount {}
@@ -3088,10 +3089,15 @@ proc ::SQGUI::computeRBins {} {
         tk_dialog .errmsg {viewSq Error} "There was an error creating the selections:\n$newSelection2" error 0 Dismiss
         return
     }
+    if {[catch {atomselect $molid "all"} sel3]} then {
+        tk_dialog .errmsg {viewSq Error} "There was an error creating the selections:\n$newSelection2" error 0 Dismiss
+        return
+    }
 
     # Get atom numbers from each r-bin atom selection
     set atom_numbers_sel1 [$sel1 get serial]
     set atom_numbers_sel2 [$sel2 get serial]
+    set sel_all [$sel3 get serial]
 
     # Process the r-bins of interest
     # Expected input format:
@@ -3234,10 +3240,10 @@ proc ::SQGUI::computeRBins {} {
                     foreach key [dict keys $atomPairCount] {
                         if {[lsearch -exact $binsOfInterest $key] >=0} {
                         set binCount [dict get $atomPairCount $key]
-                        if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
-                            incr count_all_selected_rbins_sel1_sel2 [expr $binCount / 2]
-                        } else {
-                            incr count_all_selected_rbins_sel1_sel2 [expr $binCount]      
+                        	if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
+                            	incr count_all_selected_rbins_sel1_sel2 [expr $binCount / 2]
+                        	} else {
+                            	incr count_all_selected_rbins_sel1_sel2 [expr $binCount]   
                         }
                         }
                     }
@@ -3249,21 +3255,48 @@ proc ::SQGUI::computeRBins {} {
                     foreach key [dict keys $atomPairCount] {
                         if {[lsearch -exact $binsOfInterest $key] >=0} {
                         set binCount [dict get $atomPairCount $key]
-                        if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
-                            incr count_all_selected_rbins_sel1_sel2 [expr $binCount / 2]
-                        } else {
-                            incr count_all_selected_rbins_sel1_sel2 [expr $binCount]      
+                       		if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
+                            	incr count_all_selected_rbins_sel1_sel2 [expr $binCount / 2]
+                        	} else {
+                        		incr count_all_selected_rbins_sel1_sel2 [expr $binCount]     
                         }
+                        }
+                    }
+                }
+               }
+            }   
+
+		# count all distances within r-bins
+        foreach i $sel_all {
+            foreach j $sel_all {
+                set atom_i $i
+                set atom_j $j
+                set ele_i [dict get $atoms_groupNames $atom_i]
+                set ele_i [string range $ele_i 1 [expr [string length $ele_i] -2]]
+                set ele_j [dict get $atoms_groupNames $atom_j]
+                set ele_j [string range $ele_j 1 [expr [string length $ele_j] -2]]
+                set searchKey "\[${ele_i}:${atom_i}\] \[${ele_j}:${atom_j}\]"
+
+                if {[dict exists $subGroupPair_counts $searchKey]} {                
+                	set atomPairCount [dict get $subGroupPair_counts $searchKey]
+
+                    foreach key [dict keys $atomPairCount] {
+                        if {[lsearch -exact $binsOfInterest $key] >=0} {
+                        set binCount [dict get $atomPairCount $key]
+                        	if { [lsearch -exact $sel_all $j] >=0 && [lsearch -exact $sel_all $i] >=0} {
+                       			 incr count_all_selected_rbins [expr $binCount]
+                       			}
                         }
                     }
                 }
             }
         }
 
-#    puts "total distances within rmax:  $total_distances_count"
+    
     puts "Count of selected distances within selected r-bins:  $count_all_selected_rbins_sel1_sel2"
+    puts "count_all_selected_rbins:  $count_all_selected_rbins"
 
-    set percent_distance_selected_rbins_selection_within_rbins [expr 100 * [expr double($count_all_selected_rbins_sel1_sel2) / double($total_distances_count)]]
+    set percent_distance_selected_rbins_selection_within_rbins [expr 100 * [expr double($count_all_selected_rbins_sel1_sel2) / double($count_all_selected_rbins)]]
 
     # PRINT FINAL PERCENT FOR USER-SELECTED RBIN METRIC
     puts "***Percent of selected distances within selected r-bins***:  $percent_distance_selected_rbins_selection_within_rbins"
