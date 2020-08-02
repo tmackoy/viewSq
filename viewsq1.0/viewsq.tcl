@@ -772,7 +772,7 @@ proc ::SQGUI::runSofQ {} {
     }
 
     if {$last==-1} then {
-        set last [molinfo $molid get numframes]
+        set last [expr [molinfo $molid get numframes]-1]
     } 
 
     puts "Calculating g(r)..."
