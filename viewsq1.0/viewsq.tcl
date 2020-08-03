@@ -3780,10 +3780,10 @@ proc ::SQGUI::EnDisable {args} {
         $w.sel.computeSel configure -state disabled
         $w.sel.at configure -state disabled
         $w.sel.bt configure -state disabled
-        $w.sel.useFF configure -state disabled
-        $w.sel.useSq configure -state disabled
-        $w.sel.usePosSq configure -state disabled
-        $w.sel.useNegSq configure -state disabled
+        $w.sel.precomputeFrm.params.useFF configure -state disabled
+        $w.sel.precomputeFrm.params.useSq configure -state disabled
+        $w.sel.precomputeFrm.params.usePosSq configure -state disabled
+        $w.sel.precomputeFrm.params.useNegSq configure -state disabled
         $w.rbin.t1 configure -state disabled
         $w.rbin.t2 configure -state disabled
         $w.rbin.t3 configure -state disabled
@@ -3792,10 +3792,10 @@ proc ::SQGUI::EnDisable {args} {
         $w.sel.computeSel configure -state normal
         $w.sel.at configure -state normal
         $w.sel.bt configure -state normal
-        $w.sel.useFF configure -state normal
-        $w.sel.useSq configure -state normal
-        $w.sel.usePosSq configure -state normal
-        $w.sel.useNegSq configure -state normal
+        $w.sel.precomputeFrm.params.useFF configure -state normal
+        $w.sel.precomputeFrm.params.useSq configure -state normal
+        $w.sel.precomputeFrm.params.usePosSq configure -state normal
+        $w.sel.precomputeFrm.params.useNegSq configure -state normal
         $w.rbin.t1 configure -state normal
         $w.rbin.t2 configure -state normal
         $w.rbin.t3 configure -state normal
