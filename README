@@ -113,6 +113,7 @@ vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
 
 Invoke VMD and look for the plug-in under Extensions->Analysis. When running viewSq, VMD may require you to specify the location of the Python script from step #3. Ensure Python 3.* is in the Windows path.
 
+Note: 64-bit Linux versions of VMD with viewSq can also be run using Windows Subsystem for Linux (https://docs.microsoft.com/en-us/windows/wsl/install-win10) and an X server.
 
 &&&&&&&&&&&&&&&&&&&&&&&&
 &&& QUICKSTART GUIDE &&&
