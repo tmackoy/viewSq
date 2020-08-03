@@ -3246,10 +3246,10 @@ proc ::SQGUI::computeRBins {} {
                     foreach key [dict keys $atomPairCount] {
                         if {[lsearch -exact $binsOfInterest $key] >=0} {
                         set binCount [dict get $atomPairCount $key]
-                        	if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
-                            	incr count_all_selected_rbins_sel1_sel2 [expr $binCount / 2]
-                        	} else {
-                            	incr count_all_selected_rbins_sel1_sel2 [expr $binCount]   
+                            if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
+                                incr count_all_selected_rbins_sel1_sel2 [expr $binCount / 2]
+                            } else {
+                                incr count_all_selected_rbins_sel1_sel2 [expr $binCount]   
                         }
                         }
                     }
@@ -3261,10 +3261,10 @@ proc ::SQGUI::computeRBins {} {
                     foreach key [dict keys $atomPairCount] {
                         if {[lsearch -exact $binsOfInterest $key] >=0} {
                         set binCount [dict get $atomPairCount $key]
-                       		if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
-                            	incr count_all_selected_rbins_sel1_sel2 [expr $binCount / 2]
-                        	} else {
-                        		incr count_all_selected_rbins_sel1_sel2 [expr $binCount]     
+                            if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
+                                incr count_all_selected_rbins_sel1_sel2 [expr $binCount / 2]
+                            } else {
+                                incr count_all_selected_rbins_sel1_sel2 [expr $binCount]     
                         }
                         }
                     }
@@ -3272,7 +3272,7 @@ proc ::SQGUI::computeRBins {} {
                }
             }   
 
-		# count all distances within r-bins
+        # count all distances within r-bins
         foreach i $sel_all {
             foreach j $sel_all {
                 set atom_i $i
@@ -3284,14 +3284,14 @@ proc ::SQGUI::computeRBins {} {
                 set searchKey "\[${ele_i}:${atom_i}\] \[${ele_j}:${atom_j}\]"
 
                 if {[dict exists $subGroupPair_counts $searchKey]} {                
-                	set atomPairCount [dict get $subGroupPair_counts $searchKey]
+                    set atomPairCount [dict get $subGroupPair_counts $searchKey]
 
                     foreach key [dict keys $atomPairCount] {
                         if {[lsearch -exact $binsOfInterest $key] >=0} {
                         set binCount [dict get $atomPairCount $key]
-                        	if { [lsearch -exact $sel_all $j] >=0 && [lsearch -exact $sel_all $i] >=0} {
-                       			 incr count_all_selected_rbins [expr $binCount]
-                       			}
+                            if { [lsearch -exact $sel_all $j] >=0 && [lsearch -exact $sel_all $i] >=0} {
+                                 incr count_all_selected_rbins [expr $binCount]
+                                }
                         }
                     }
                 }
@@ -3356,7 +3356,7 @@ proc ::SQGUI::sqgui {args} {
     grid rowconfigure    $w 0 -weight 10   -minsize 150
     grid rowconfigure    $w 1 -weight 1    -minsize 25
     grid rowconfigure    $w 2 -weight 1    -minsize 40
-    grid rowconfigure    $w 3 -weight 2    -minsize 70
+    grid rowconfigure    $w 3 -weight 1    -minsize 80
     grid rowconfigure    $w 4 -weight 1    -minsize 50
     grid rowconfigure    $w 5 -weight 10    -minsize 100
 
@@ -3504,31 +3504,35 @@ proc ::SQGUI::sqgui {args} {
     #################
     # subdivide and layout the Selections frame
     set i $w.sel
-    label $i.al -text "Selection 1:" 
-    entry $i.at -width 20 -textvariable ::SQGUI::selection1
-    label $i.bl -text "Selection 2:"
-    entry $i.bt -width 20 -textvariable ::SQGUI::selection2
+    label $i.al -text " Selection 1: " -padx 50 -pady 5
+    entry $i.at -width 85 -textvariable ::SQGUI::selection1
+    label $i.bl -text " Selection 2: " -padx 50 -pady 5
+    entry $i.bt -width 85 -textvariable ::SQGUI::selection2
+    button $i.computeSel -text {Compute Partial S(q)} -command [namespace code computeSelections] -padx 10
     
-    checkbutton $i.useFF -text " Use Form Factor" -variable ::SQGUI::useFFSq
-    $i.useFF deselect
 
-    label $i.precompsel -text "Precompute:"
-    radiobutton $i.useSq    -text "Net Atomic Contributions to S(q)" -variable ::SQGUI::useWhichContribution  -value "total"
-    radiobutton $i.usePosSq -text "Positive Atomic Contributions to S(q)" -variable ::SQGUI::useWhichContribution  -value "positive"
-    radiobutton $i.useNegSq -text "Negative Atomic Contributions to S(q)" -variable ::SQGUI::useWhichContribution  -value "negative"
-    $i.useSq select
-    label $i.temp -text " "
-    button $i.computeSel -text {Compute Partial S(q)} -command [namespace code computeSelections]
-    
-    grid $i.al $i.at $i.bl $i.bt $i.useFF -row 0 -sticky snew
-    grid $i.temp -row 1 -sticky snew
-    grid $i.precompsel $i.useSq $i.usePosSq $i.useNegSq $i.computeSel -row 2 -sticky snew
+    labelframe $i.precomputeFrm -bd 2 -relief ridge -text "Precompute:" -padx 5 -pady 1m
+    frame $i.precomputeFrm.params
+    pack $i.precomputeFrm.params -side left -expand true
+    set j $i.precomputeFrm.params
+    radiobutton $j.useSq    -text "Net Atomic Contributions to S(q)" -variable ::SQGUI::useWhichContribution  -value "total" -padx 10
+    radiobutton $j.usePosSq -text "Positive Atomic Contributions to S(q)" -variable ::SQGUI::useWhichContribution  -value "positive" -padx 10
+    radiobutton $j.useNegSq -text "Negative Atomic Contributions to S(q)" -variable ::SQGUI::useWhichContribution  -value "negative" -padx 10
+    $j.useSq select
+    checkbutton $j.useFF -text "Use Form Factor" -variable ::SQGUI::useFFSq -padx 20
+    $j.useFF deselect
 
-    grid columnconfigure $i 0 -weight 1
-    grid columnconfigure $i 1 -weight 1
-    grid columnconfigure $i 2 -weight 1
-    grid columnconfigure $i 3 -weight 2
-    grid columnconfigure $i 4 -weight 1
+    grid config $j.useSq -column 0 -row 0 -columnspan 1 -rowspan 1 -sticky "snew" 
+    grid config $j.usePosSq -column 1 -row 0 -columnspan 1 -rowspan 1 -sticky "snew" 
+    grid config $j.useNegSq -column 2 -row 0 -columnspan 1 -rowspan 1 -sticky "snew" 
+    grid config $j.useFF -column 3 -row 0 -columnspan 1 -rowspan 1 -sticky "snew"  
+
+    grid config $i.al -column 0 -row 0 -columnspan 1 -rowspan 1 -sticky "snew"
+    grid config $i.at -column 1 -row 0 -columnspan 2 -rowspan 1 -sticky "snew"
+    grid config $i.bl -column 3 -row 0 -columnspan 1 -rowspan 1 -sticky "snew"
+    grid config $i.bt -column 4 -row 0 -columnspan 2 -rowspan 1 -sticky "snew"
+    grid config $i.precomputeFrm -column 0 -row 1 -columnspan 5 -rowspan 1 -sticky "snew"  
+    grid config $i.computeSel -column 5 -row 1 -columnspan 1 -rowspan 1 -sticky "snew"
 
     #################
     # subdivide and layout the r bins frame
