@@ -917,7 +917,7 @@ proc ::SQGUI::runSofQ {} {
 #################################################################
 #
 # Description:
-#       Method to calculate form factor for element pairs. This method takes care of
+#       Method to calculate form factors for element pairs. This method takes care of
 #           1. Reading the atomic form factors file and elements.ndx file
 #           2. identify all possible element pairs and precompute form factors at all possible q's for each element pair
 #
@@ -925,7 +925,7 @@ proc ::SQGUI::runSofQ {} {
 #       None
 #
 # Return values:
-#       None
+#       Status - 0 if success, -1 if fail
 #
 #################################################################
 
@@ -1103,10 +1103,14 @@ proc ::SQGUI::readElementsFile {} {
 #################################################################
 #
 # Description:
+#       Method to perform necessary aggregations for calculating unit S(q) contribution by each element type 
+#           i.e., contribution of each element type, to S(q), when there is a count of 1 in each bin at a time
 #
 # Input parameters:
+#       None
 #
 # Return values:
+#       None
 #
 #################################################################
 
@@ -1129,7 +1133,6 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
     set all_same_elements_weights {}
     set all_same_group_pair_formfactors {}
     set all_atoms_counts [dict create]
-    set all_atoms_counts_by_group [dict create]
     set selection_groups_weights_all_denominator [dict create]
     set unit_sofqs [dict create]
     set unit_sofqs_ff [dict create]
@@ -1259,8 +1262,7 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
         }
 
         dict lappend all_atoms_counts $atom_i [list $atom_j $counts]
-        dict lappend all_atoms_counts $atom_j [list $atom_i $counts]  
-        # dict lappend all_atoms_counts_by_group  
+        dict lappend all_atoms_counts $atom_j [list $atom_i $counts]
     }
 
     # aggregate the individual atom pair counts in such a way that we have dictionary with 
@@ -1590,10 +1592,21 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
 #################################################################
 #
 # Description:
+#       Method to write neighbor contributions of given atom using the provided file handle
 #
 # Input parameters:
+#       filePtr                 - Handle to a file opened for writing
+#       atom                    - atomic number (VMD serial) of an atom
+#       neighbour_contributions - dictionary that holds all the contributions from all the nighboring atoms.
+#         format:
+#           {
+#               neighbor 1: [array of S(q) values]
+#               neighbor 2: [array of S(q) values]
+#               neighbor 3: [array of S(q) values]
+#           }
 #
 # Return values:
+#       atom contribution - contribution of the current atom to toal S(q), obtained by adding all the contributions of the neighbors
 #
 #################################################################
 
@@ -1622,27 +1635,29 @@ proc ::SQGUI::writeContributions {filePtr atom neighbour_contributions} {
     return $cur_atom_contribution
 }
 
-# Counts Dictionary format:
-#   {
-#       type1-type1: [bin:count bin:count]
-#       type1-type2: [bin:count bin:count]
-#       type2-type2: [bin:count bin:count]
-#   }
-#
-# Weights Dictionary format:
-#   {
-#       type1-type1: weight
-#       type1-type2: weight
-#       type2-type2: weight
-#   }
-
 #################################################################
 #
 # Description:
+#       Method responsible for computing the partial S(q) and partial form factor weighted S(q) for the selections.
 #
 # Input parameters:
+#       counts_dict     - Dictionary of possible element type pairs and their aggregated bin counts 
+#         format:
+#           {
+#               type1-type1: [bin:count bin:count ...]
+#               type1-type2: [bin:count bin:count ...]
+#               type2-type2: [bin:count bin:count ...]
+#           }
+#       weights_dict    - Dictionary of possible element type pairs and weights
+#         format:
+#           {
+#               type1-type1: weight
+#               type1-type2: weight
+#               type2-type2: weight
+#           }
 #
 # Return values:
+#       None
 #
 #################################################################
 
@@ -1698,8 +1713,6 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
 
     set sel1_20 [string range $selection1 0 20]
     set sel2_20 [string range $selection2 0 20]
-    # set subsel1_20 [string range $subselection1 0 20]
-    # set subsel2_20 [string range $subselection2 0 20]
     set counter 1
     set grp_pairs_count [llength [dict keys $counts_dict]]
 
@@ -1857,41 +1870,51 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
 #################################################################
 #
 # Description:
+#       Method to output number of atoms in each selection, on console
 #
 # Input parameters:
-#
+#       atoms_sel1      - number of atoms in selection1
+#       atoms_sel2      - number of atoms in selection2
+#   
 # Return values:
+#       None
 #
 #################################################################
 
-proc ::SQGUI::printatomCounts {atoms_sel1 atoms_sel2 atoms_subSel1 atoms_subSel2} {
+proc ::SQGUI::printatomCounts {atoms_sel1 atoms_sel2} {
     puts "Number of atoms in selection1: $atoms_sel1   Number of atoms in selection2: $atoms_sel2"
 }
 
 #################################################################
 #
 # Description:
+#       Method to output number of distances in selections and total, on console
 #
 # Input parameters:
+#       selectionDistances      - number of distance counts in selections
+#       all_distances_count     - number of distance counts in total
 #
 # Return values:
+#       None
 #
 #################################################################
 
-proc ::SQGUI::printdistanceCounts {selectionDistances subSelectionDistances all_distances_count} {
+proc ::SQGUI::printdistanceCounts {selectionDistances all_distances_count} {
     puts "Distances in selection: $selectionDistances   Total Distances in bins: $all_distances_count"
 }
 
 #################################################################
 #
 # Description:
+#       Method responsible for parsing the atoms that are part of the selections and filtering counts based on the selections and store the aggregated counts in a dictionary
 #
 # Input parameters:
+#       None
 #
 # Return values:
+#       None
 #
 #################################################################
-##### set selection_atom_contributions dict to non-FF / FF based on the UI selection.
 proc ::SQGUI::computeSelections {} {
 
     global bin_totals
@@ -1951,7 +1974,6 @@ proc ::SQGUI::computeSelections {} {
     set num_atoms_in_selection 0
 
     set subSelectionPercent_Total 0
-    set subSelectionDistances 0
     set selectionDistances 0
     set subSelectionPercent_Selection 0
     set total_distances_count 0
@@ -2020,8 +2042,8 @@ proc ::SQGUI::computeSelections {} {
         
         set num_atoms_in_selection $num_atoms
         set selection_groups_weights_all_denominator $allPairsAggregated_weights
-        printatomCounts $atoms_sel1 $atoms_sel2 $atoms_subSel1 $atoms_subSel2
-        printdistanceCounts $selectionDistances $subSelectionDistances $all_distances_count        
+        printatomCounts $atoms_sel1 $atoms_sel2
+        printdistanceCounts $selectionDistances $all_distances_count        
         computePartialsForSelections $allPairsAggregated_counts $allPairsAggregated_weights
         puts "Completed!\n"
     } else {
@@ -2219,8 +2241,8 @@ proc ::SQGUI::computeSelections {} {
             }
         }
         
-        printatomCounts $atoms_sel1 $atoms_sel2 $atoms_subSel1 $atoms_subSel2
-        printdistanceCounts $selectionDistances $subSelectionDistances $all_distances_count
+        printatomCounts $atoms_sel1 $atoms_sel2
+        printdistanceCounts $selectionDistances $all_distances_count
         puts "Calculating atom and neighbor contributions from selections..."
         ### Read the contributions file and create the selection_atom_contributions for ranking, by filtering only the atoms from the selections
         set write_to_file 0
@@ -2330,10 +2352,16 @@ proc ::SQGUI::computeSelections {} {
 #################################################################
 #
 # Description:
+#       Method responsible for displaying statistics related to selections. Statistics include 
+#         1. A table showing total, positive component, and negative component of S(q) and form factor weighted S(q) for selected q range
+#         2. A plot showing each r-bin contribution to S(q) and form factor weighted S(q) for selected q range 
+#         3. A plot of all atoms in the selection ranked by their contribution to S(q) 
 #
 # Input parameters:
+#       None
 #
 # Return values:
+#       None
 #
 #################################################################
 
@@ -2406,8 +2434,6 @@ proc ::SQGUI::DisplayStatsForSelections {} {
 
     set sel1_20 [string range $selection1 0 20]
     set sel2_20 [string range $selection2 0 20]
-    # set subsel1_20 [string range $subselection1 0 20]
-    # set subsel2_20 [string range $subselection2 0 20]
     set adjusted_rightBin [expr $rightBin + [expr $delta_q/100]]
     set adjusted_leftBin [expr $leftBin - [expr $delta_q/100]]
     for {set cur_q $min_q} {$cur_q <= $adjusted_rightBin} {set cur_q [expr {$cur_q + $delta_q}]} {
@@ -2650,10 +2676,14 @@ proc ::SQGUI::DisplayStatsForSelections {} {
 #################################################################
 #
 # Description:
+#       Method responsible for updating the existing plots and visualizations based on the selected value of the sliders on the GUI
+#       This method also updated the molecular visualizations on the VMD visualization window based on the color, material and other drawing options  
 #
 # Input parameters:
+#       val - Selected value on the slider 
 #
 # Return values:
+#       None
 #
 #################################################################
 
@@ -3032,10 +3062,14 @@ proc ::SQGUI::UpdateRenderer {val} {
 #################################################################
 #
 # Description:
+#       Method responsible for computing various statistics and outputting them to console
+#       The statistics include number/percentage of atoms/distances in the box/selections.
 #
 # Input parameters:
+#       None
 #
 # Return values:
+#       None
 #
 #################################################################
 
@@ -3123,7 +3157,7 @@ proc ::SQGUI::computeRBins {} {
         }
     }
 
-    # BEGIN COUNTS FOR BOX METRICS
+    # Begin counts for box metics
     set num_atoms_minus_one [expr $num_atoms - 1]
     set total_num_distances_in_box [expr $num_atoms * $num_atoms_minus_one / 2]
 
@@ -3147,10 +3181,10 @@ proc ::SQGUI::computeRBins {} {
     set distances_due_to_non_overlap_rbins_sel1_sel2 [expr [expr $num_atoms_rbins_sel1 - $count_overlap_rbins_sel1_sel2] * [expr $num_atoms_rbins_sel2 - $count_overlap_rbins_sel1_sel2]]
     set percent_distance_rbins_selection_within_box [expr 100 * ([expr double($distances_due_to_non_overlap_rbins_sel1_sel2) / double($total_num_distances_in_box)] + [expr double($distances_due_to_overlap_rbins_sel1_sel2) / double($total_num_distances_in_box)])]
 
-    # PRINT FINAL PERCENT FOR BOX METRIC
+    # Print final percent for box metric
     puts "***Percent selected distance types out of all distances in box***:  $percent_distance_rbins_selection_within_box"
 
-    # BEGIN COUNTS FOR All RBIN METRIC
+    # Begin counts for all r-bin metric
         foreach i $atom_numbers_sel1 {
             foreach j $atom_numbers_sel2 {
                 set atom_i $i
@@ -3195,78 +3229,78 @@ proc ::SQGUI::computeRBins {} {
 
     set percent_distance_rbins_selection_within_rmax [expr 100 * [expr double($count_all_rbins_sel1_sel2) / double($total_distances_count)]]
 
-    # PRINT FINAL PERCENT FOR All RBIN METRIC
+    # Print final percent for all r-bin metric
     puts "***Percent selected distance types represent out of all distances within rmax***:  $percent_distance_rbins_selection_within_rmax"
 
-    # BEGIN COUNTS FOR USER-SELECTED RBIN METRIC
-        foreach i $atom_numbers_sel1 {
-            foreach j $atom_numbers_sel2 {
-                set atom_i $i
-                set atom_j $j
-                set ele_i [dict get $atoms_groupNames $atom_i]
-                set ele_i [string range $ele_i 1 [expr [string length $ele_i] -2]]
-                set ele_j [dict get $atoms_groupNames $atom_j]
-                set ele_j [string range $ele_j 1 [expr [string length $ele_j] -2]]
-                set searchKey "\[${ele_i}:${atom_i}\] \[${ele_j}:${atom_j}\]"  
-                set searchKeyReverse "\[${ele_j}:${atom_j}\] \[${ele_i}:${atom_i}\]"   
+    # Begin counts for user-selected r-bin metric
+    foreach i $atom_numbers_sel1 {
+        foreach j $atom_numbers_sel2 {
+            set atom_i $i
+            set atom_j $j
+            set ele_i [dict get $atoms_groupNames $atom_i]
+            set ele_i [string range $ele_i 1 [expr [string length $ele_i] -2]]
+            set ele_j [dict get $atoms_groupNames $atom_j]
+            set ele_j [string range $ele_j 1 [expr [string length $ele_j] -2]]
+            set searchKey "\[${ele_i}:${atom_i}\] \[${ele_j}:${atom_j}\]"  
+            set searchKeyReverse "\[${ele_j}:${atom_j}\] \[${ele_i}:${atom_i}\]"   
 
-                if {[dict exists $subGroupPair_counts $searchKey]} {                
-                    set atomPairCount [dict get $subGroupPair_counts $searchKey]
+            if {[dict exists $subGroupPair_counts $searchKey]} {                
+                set atomPairCount [dict get $subGroupPair_counts $searchKey]
 
-                    foreach key [dict keys $atomPairCount] {
-                        if {[lsearch -exact $binsOfInterest $key] >=0} {
-                            set binCount [dict get $atomPairCount $key]
-                            if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
-                                incr count_all_selected_rbins_sel1_sel2 [expr $binCount / 2]
-                            } else {
-                                incr count_all_selected_rbins_sel1_sel2 [expr $binCount]   
-                            }
-                        }
-                    }
-                }
-
-                if {[dict exists $subGroupPair_counts $searchKeyReverse]} {
-                    set atomPairCount [dict get $subGroupPair_counts $searchKeyReverse]
-
-                    foreach key [dict keys $atomPairCount] {
-                        if {[lsearch -exact $binsOfInterest $key] >=0} {
-                            set binCount [dict get $atomPairCount $key]
-                            if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
-                                incr count_all_selected_rbins_sel1_sel2 [expr $binCount / 2]
-                            } else {
-                                incr count_all_selected_rbins_sel1_sel2 [expr $binCount]     
-                            }
+                foreach key [dict keys $atomPairCount] {
+                    if {[lsearch -exact $binsOfInterest $key] >=0} {
+                        set binCount [dict get $atomPairCount $key]
+                        if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
+                            incr count_all_selected_rbins_sel1_sel2 [expr $binCount / 2]
+                        } else {
+                            incr count_all_selected_rbins_sel1_sel2 [expr $binCount]   
                         }
                     }
                 }
             }
-        }   
 
-        # count all distances within r-bins
-        foreach i $sel_all {
-            foreach j $sel_all {
-                set atom_i $i
-                set atom_j $j
-                set ele_i [dict get $atoms_groupNames $atom_i]
-                set ele_i [string range $ele_i 1 [expr [string length $ele_i] -2]]
-                set ele_j [dict get $atoms_groupNames $atom_j]
-                set ele_j [string range $ele_j 1 [expr [string length $ele_j] -2]]
-                set searchKey "\[${ele_i}:${atom_i}\] \[${ele_j}:${atom_j}\]"
+            if {[dict exists $subGroupPair_counts $searchKeyReverse]} {
+                set atomPairCount [dict get $subGroupPair_counts $searchKeyReverse]
 
-                if {[dict exists $subGroupPair_counts $searchKey]} {                
-                    set atomPairCount [dict get $subGroupPair_counts $searchKey]
-
-                    foreach key [dict keys $atomPairCount] {
-                        if {[lsearch -exact $binsOfInterest $key] >=0} {
+                foreach key [dict keys $atomPairCount] {
+                    if {[lsearch -exact $binsOfInterest $key] >=0} {
                         set binCount [dict get $atomPairCount $key]
-                            if { [lsearch -exact $sel_all $j] >=0 && [lsearch -exact $sel_all $i] >=0} {
-                                 incr count_all_selected_rbins [expr $binCount]
-                                }
+                        if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
+                            incr count_all_selected_rbins_sel1_sel2 [expr $binCount / 2]
+                        } else {
+                            incr count_all_selected_rbins_sel1_sel2 [expr $binCount]     
                         }
                     }
                 }
             }
         }
+    }   
+
+    # count all distances within r-bins
+    foreach i $sel_all {
+        foreach j $sel_all {
+            set atom_i $i
+            set atom_j $j
+            set ele_i [dict get $atoms_groupNames $atom_i]
+            set ele_i [string range $ele_i 1 [expr [string length $ele_i] -2]]
+            set ele_j [dict get $atoms_groupNames $atom_j]
+            set ele_j [string range $ele_j 1 [expr [string length $ele_j] -2]]
+            set searchKey "\[${ele_i}:${atom_i}\] \[${ele_j}:${atom_j}\]"
+
+            if {[dict exists $subGroupPair_counts $searchKey]} {                
+                set atomPairCount [dict get $subGroupPair_counts $searchKey]
+
+                foreach key [dict keys $atomPairCount] {
+                    if {[lsearch -exact $binsOfInterest $key] >=0} {
+                    set binCount [dict get $atomPairCount $key]
+                        if { [lsearch -exact $sel_all $j] >=0 && [lsearch -exact $sel_all $i] >=0} {
+                             incr count_all_selected_rbins [expr $binCount]
+                            }
+                    }
+                }
+            }
+        }
+    }
 
     
     puts "Count of selected distances within selected r-bins:  $count_all_selected_rbins_sel1_sel2"
@@ -3274,7 +3308,7 @@ proc ::SQGUI::computeRBins {} {
 
     set percent_distance_selected_rbins_selection_within_rbins [expr 100 * [expr double($count_all_selected_rbins_sel1_sel2) / double($count_all_selected_rbins)]]
 
-    # PRINT FINAL PERCENT FOR USER-SELECTED RBIN METRIC
+    # Print final percent for user-selected r-bin metric
     puts "***Percent of selected distances within selected r-bins***:  $percent_distance_selected_rbins_selection_within_rbins"
 }
 
