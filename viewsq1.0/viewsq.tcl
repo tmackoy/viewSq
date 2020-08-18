@@ -1,7 +1,7 @@
 namespace eval ::SQGUI:: {
     namespace export sqgui
 
-    variable w;                     # handle to the base widget.
+    variable w;                     # handle to the base widget
     variable version    "1.0";      # plugin version  
 
     variable vmd_Path   "";         # VMD environment path
@@ -10,22 +10,22 @@ namespace eval ::SQGUI:: {
     variable molid       "-1";      # molid of the molecule to grab
     variable moltxt        "";      # title the molecule to grab
     
-    variable selection1    "all";   # selection string for first selection
-    variable selection2    "all";   # selection string for second selection
-    variable newSelection1 "all";   # new selection1 for statistics
-    variable newSelection2 "all";   # new selection2 for statistics
-    variable rbinRange     "all";   # R bins range for statistics
-    variable atom_numbers_sel1 "";  # atom numbers in selection 1
-    variable atom_numbers_sel2 "";  # atom numbers in selection 2
-    variable useFFSq     0;         # Whether to use FF weighted S(q) for contributions
-    variable useWhichContribution "total";   # Whether to use total S(q) or positive or negative contributions for atom ranking
+    variable selection1    "all";   # initial selection string (set to "all")
+    variable selection2    "all";   # inital selection string (set to "all")
+    variable newSelection1 "all";   # new selection1 for r-bin statistics
+    variable newSelection2 "all";   # new selection2 for r-bin statistics
+    variable rbinRange     "all";   # range for r-bin statistics
+    variable atom_numbers_sel1 "";  # atom numbers (VMD serial) in selection 1
+    variable atom_numbers_sel2 "";  # atom numbers (VMD serial) in selection 2
+    variable useFFSq     0;         # whether to use FF weighted S(q) for precompute (variable binded to checkbox)
+    variable useWhichContribution "total";   # whether to use total S(q) or positive or negative components for atom ranking
     variable showNeighborPlotFlag 0; # stores whether to display top N neighbors plot
-    variable useLorch       0;      # Whether to use Lorch fucntion during S(q) calculations
-    variable lorchC         "10.0"; # Default lorch constant is same as rmax
-    variable rankDescending 1;      # Whether to rank atoms by decreasing order of contribution
+    variable useLorch       0;      # whether to use Lorch fucntion during S(q) calculations
+    variable lorchC         "10.0"; # default lorch constant. set to 10.0 (same default value as default rmax)
+    variable rankDescending 1;      # whether to rank atoms by decreasing order of contribution
 
-    variable delta      "0.1";      # delta for histogram
-    variable rmax      "10.0";      # max r in histogram
+    variable delta      "0.1";      # delta for g(r)
+    variable rmax      "10.0";      # max r in g(r)
     variable num_atoms      0;      # total number of atoms
     variable n_frames       0;      # total number of frames used
 
@@ -33,107 +33,100 @@ namespace eval ::SQGUI:: {
     variable last        "-1";      # last frame
     variable step         "1";      # frame step delta 
 
-    variable useXRay      "1";      # Controls whether to use x-ray constants or neutron constants file for FF calculations 
+    variable useXRay      "1";      # controls whether to use x-ray constants or neutron constants file for FF calculations 
 
-    variable min_q        "0.5";    # min q value for partial s(q)s
-    variable max_q        "2";      # max q value for partial s(q)s
-    variable delta_q      "0.1";    # q step delta 
+    variable min_q        "0.5";    # min q value for partial S(q)
+    variable max_q        "2";      # max q value for partial S(q)
+    variable delta_q      "0.1";    # delta for S(q)
 
-    variable density       0.0;     # total density
-    variable density_normalized 0.0;# Normalized total density
-    variable all_distances_count 0; #Sum of distance counts across all element pairs
-    variable total_distances_count 0;#Sum of distance counts across all element pairs in the selections
+    variable density       0.0;      # total density (number of atoms per volume averaged across frames)
+    variable density_normalized 0.0; # normalized total density (4*pi*density/3)
+    variable all_distances_count 0;  # sum of atom pair counts across all element types (within r max)
+    variable total_distances_count 0;# sum of atom pair counts of the selected element types
 
-    variable leftBin       "";      # bin represent left of peak of interest
-    variable rightBin      "";      # bin represent right of peak of interest
-    variable topN          "";      # Top N contributors of interest
-    variable atomsAll      "";      # All atoms in selection
+    variable leftBin       "";      # left q for slider
+    variable rightBin      "";      # right q for slider
+    variable topN          "";      # top N atomic contributors for visualization
+    variable atomsAll      "";      # atoms (VMD serial) in union of selections
 
-    variable displayAtoms "1";      # 1: display atoms, 0: display molecles
-    variable addBeta      "1";      # 1: add betas by rank 0: add betas by contribution score
+    variable displayAtoms "1";      # 1: visualize atoms, 0: visualize molecles
+    variable addBeta      "1";      # 1: add betas by rank, 0: add betas by contribution score
     
     variable cannotplot   "0";      # is multiplot available?
-    variable enableStatistics 0;    # control varibale to decide whether the computer rankings button and corresponding controls should be enabled
-    variable enableSelections 0;    # control varibale to decide whether the controls related to selections should be enabled
-    variable enableRankings   0;    # control varibale to decide whether the rankings are calculated to enable visualization controls
+    variable enableStatistics 0;    # enable/disable compute rankings button and corresponding controls
+    variable enableSelections 0;    # enable/disable controls related to selections
+    variable enableRankings   0;    # enable/disable visualization controls
 
-    variable SQ_plot       "";      # Handler for S(Q) plot window
+    variable SQ_plot       "";      # handler for S(q) plot window
     variable x_SQ      "";          # S(q) plot X values
     variable y_SQ      "";          # S(q) plot Y values
 
-    variable vis_selection1 "";             # Selection 1 for visualization
+    variable vis_selection1 "";             # selection 1 for visualization
     variable selection1_colorId 0;          # colorID for selection 1
-    variable selection1_color_method "";    # Coloring Method for selection 1
-    variable selection1_material "";        # Material for selection 1
-    variable selection1_draw_method "";     # Drawing Method for selection 1
-    variable vis_selection2 "";             # Selection 2 for visualization
+    variable selection1_color_method "";    # coloring Method for selection 1
+    variable selection1_material "";        # material for selection 1
+    variable selection1_draw_method "";     # drawing Method for selection 1
+    variable vis_selection2 "";             # selection 2 for visualization
     variable selection2_colorId 0;          # colorID for selection 2
-    variable selection2_color_method "";    # Coloring Method for selection 2
-    variable selection2_material "";        # Material for selection 2
-    variable selection2_draw_method "";     # Drawing Method for selection 2
-    variable vis_selection3 "";             # Selection 3 for visualization
+    variable selection2_color_method "";    # coloring Method for selection 2
+    variable selection2_material "";        # material for selection 2
+    variable selection2_draw_method "";     # drawing Method for selection 2
+    variable vis_selection3 "";             # selection 3 for visualization
     variable selection3_colorId 0;          # colorID for selection 3
-    variable selection3_color_method "";    # Coloring Method for selection 3
-    variable selection3_material "";        # Material for selection 3
-    variable selection3_draw_method "";     # Drawing Method for selection 3
-    variable vis_selection4 "";             # Selection 4 for visualization
+    variable selection3_color_method "";    # coloring Method for selection 3
+    variable selection3_material "";        # material for selection 3
+    variable selection3_draw_method "";     # drawing Method for selection 3
+    variable vis_selection4 "";             # selection 4 for visualization
     variable selection4_colorId 0;          # colorID for selection 4
-    variable selection4_color_method "";    # Coloring Method for selection 4
-    variable selection4_material "";        # Material for selection 4
-    variable selection4_draw_method "";     # Drawing Method for selection 4
-    variable vis_selection5 "";             # Selection 5 for visualization
+    variable selection4_color_method "";    # coloring Method for selection 4
+    variable selection4_material "";        # material for selection 4
+    variable selection4_draw_method "";     # drawing Method for selection 4
+    variable vis_selection5 "";             # selection 5 for visualization
     variable selection5_colorId 0;          # colorID for selection 5
-    variable selection5_color_method "";    # Coloring Method for selection 5
-    variable selection5_material "";        # Material for selection 5
-    variable selection5_draw_method "";     # Drawing Method for selection 5
+    variable selection5_color_method "";    # coloring Method for selection 5
+    variable selection5_material "";        # material for selection 5
+    variable selection5_draw_method "";     # drawing Method for selection 5
     variable atom_beta_by_Score {};         # betas for atoms defined by score
     variable atom_beta_by_Rank_Sorted {};   # betas for atoms defined by rank
     variable atom_beta_by_Score_Sorted {};  # betas for atoms defined by score
     variable molecule_beta_by_Rank  {};     # betas for molecules defined by rank
     variable molecule_beta_by_Score {};     # betas for molecules defined by score
 
-    variable atom_props "";
-    variable auto_call      1;      # Controls if the all pairs selection is specifically made by user or not
-    variable rank_plot  "";         # Plot handle for ranking atoms/neighbors
+    variable auto_call      1;      # identifies whether an all-all selection is made by user
+    variable rank_plot  "";         # plot handle for ranking atoms/neighbors
 
     set atoms_groupNames [dict create];                         # stores atoms number as key and element type are value in dictionary
     set groups_atomNos [dict create];                           # stores element type as key and atoms number are value in dictionary
-    set group_formfactors [dict create];                        # stores the formfactors of all the element types
-    set groupPair_formfactors [dict create];                    # stores the formfactors of all the possible element group pairs
-    set subGroupPair_counts [dict create];                      # stores the counts of all the subgroup pairs
-    set allPairsAggregated_counts [dict create];                # stores the aggregated counts of all the group pairs
-    set allPairsAggregated_weights [dict create];               # stores the aggregated weights of all the group pairs
+    set group_formfactors [dict create];                        # stores the formfactors of all element types
+    set groupPair_formfactors [dict create];                    # stores the formfactors of all possible element group pairs
+    set subGroupPair_counts [dict create];                      # stores the counts of all subgroup pairs
+    set allPairsAggregated_counts [dict create];                # stores the aggregated counts of all group pairs
+    set allPairsAggregated_weights [dict create];               # stores the aggregated weights of all group pairs
     set group_pair_s_q {};                                      # stores the partial S(q)s of all group pairs
     set ff_weighted_group_pair_s_q [dict create];               # stores the formfactor weighted partial S(q)s of all group pairs
-    set rbin_contributions_for_total_S_q {};                    # stores r bin contributions for total S(q) at each q for selections
-    set rbin_contributions_for_ff_weighted_S_q {};              # stores r bin contributions for form factored weighted S(q) at each q for selections
-    set total_S_q_pos_contributions [dict create];              # stores +ve contributions of r bins at each q for total s(q)
-    set total_S_q_neg_contributions [dict create];              # stores -ve contributions of r bins at each q for total s(q)
-    set selection_S_q_pos_contributions [dict create];          # stores +ve contributions of r bins at each q for s(q) for selections
-    set selection_S_q_neg_contributions [dict create];          # stores -ve contributions of r bins at each q for s(q) for selections
-    set selection_weighted_S_q_pos_contributions [dict create]; # stores +ve contributions of r bins at each q for form factor weighted s(q) for selections
-    set selection_weighted_S_q_neg_contributions [dict create]; # stores -ve contributions of r bins at each q for form factor weighted s(q) for selections
+    set rbin_contributions_for_total_S_q {};                    # stores r-bin contributions for total S(q) at each q for selections
+    set rbin_contributions_for_ff_weighted_S_q {};              # stores r-bin contributions for form factored weighted S(q) at each q for selections
+    set total_S_q_pos_contributions [dict create];              # stores positive contributions of r-bins at each q for total S(q)
+    set total_S_q_neg_contributions [dict create];              # stores negative contributions of r-bins at each q for total S(q)
+    set selection_S_q_pos_contributions [dict create];          # stores positive contributions of r-bins at each q for S(q) for selections
+    set selection_S_q_neg_contributions [dict create];          # stores negative contributions of r-bins at each q for S(q) for selections
+    set selection_weighted_S_q_pos_contributions [dict create]; # stores positive contributions of r-bins at each q for form factor weighted S(q) for selections
+    set selection_weighted_S_q_neg_contributions [dict create]; # stores negative contributions of r-bins at each q for form factor weighted S(q) for selections
     
-    set selection_atoms_counts [dict create];                   # Stores counts for each atom in the selection
-    set all_atoms_counts [dict create];                         # Stores counts for each atom in the input file
-    set possible_sq_contributions {};                           # Stores the S(q) values and positive and negative contributions to s(q) at each q for a count 1 at all possible bins.
-    set possible_sq_contribution_differences {};                # Stores the difference in S(q)values and positive and negative contributions to s(q) at each q for a difference of 1 in count at all possible bins.
-    set selection_atom_contributions [dict create];             # Stores for all atoms in the selection, each atom and its contribution to S(q), positive and negative components of S(q)
+    set selection_atoms_counts [dict create];                   # stores counts for each atom in the selection
+    set all_atoms_counts [dict create];                         # stores counts for each atom in the input file
+    set possible_sq_contributions {};                           # stores the S(q) values and positive and negative contributions to S(q) at each q for a count 1 at all possible bins.
+    set possible_sq_contribution_differences {};                # stores the difference in S(q)values and positive and negative contributions to S(q) at each q for a difference of 1 in count at all possible bins.
+    set selection_atom_contributions [dict create];             # stores for all atoms in the selection, each atom and its contribution to S(q), positive and negative components of S(q)
 
-    set all_same_elements_weights {};               # store weights of all homogenous element pairs
-    set all_same_group_pair_formfactors {};         # store form factors of all homogenous element pairs
+    set all_same_elements_weights {};               # stores weights of all homogenous element pairs
+    set all_same_group_pair_formfactors {};         # stores form factors of all homogenous element pairs
 
-    set selection_groups_weights_all_denominator [dict create]; # store weights of all element pairs with denominator as all-all distance counts
+    set selection_groups_weights_all_denominator [dict create]; # stores weights of all element pairs calculated using all-all distance counts instead of selections distance counts
 
-    set bin_totals {}
-    set bin_matrix {}
-    set atom_numbers {}
-    set topN_Sorted {}
-    set group_totals [dict create]
-    set group_matrices [dict create]
-    set group_bulk_stats [dict create]
-    set group_pair_num_atoms [dict create]
-    variable pi "3.1415926535897931";
+    set bin_totals {};                       # total counts in each g(r) bin
+    set topN_Sorted {};                      # atom numbers (VMD serial) of the top N contributors
+    variable pi "3.1415926535897931";       # constant value for pi
 }
 
 package provide sqgui $SQGUI::version
@@ -141,7 +134,20 @@ package provide sqgui $SQGUI::version
 #################
 proc ::SQGUI::ladd {l} {::tcl::mathop::+ {*}$l}
 
-# Ported to TCL using the original C++ code developed by Travis.
+#################################################################
+#
+# Description:
+#       Method to compute g(r)
+#       Note: Ported to TCL using the original C++ code developed by Travis
+#
+# Input parameters:
+#       temp_y - An array of bin counts
+#
+# Return values:
+#       computed g(r) - An array of [r, g(r)] pairs
+#
+#################################################################
+
 proc ::SQGUI::get_g_r {temp_y} {
     variable delta
     variable rmax
@@ -162,6 +168,20 @@ proc ::SQGUI::get_g_r {temp_y} {
     
     return [list $x_gofr $y_gofr]
 }
+
+#################################################################
+#
+# Description:
+#       Method to compute partial g(r)
+#
+# Input parameters:
+#       bin_val_pairs   - An array of [bin number, distance count] pairs
+#       pair_weight     - Weight of the element type pair associated with the partial
+#
+# Return values:
+#       computed partial g(r) - An array of [r, g(r)] pairs
+#
+#################################################################
 
 proc ::SQGUI::get_partial_g_r {bin_val_pairs pair_weight} {
     variable delta
@@ -193,6 +213,20 @@ proc ::SQGUI::get_partial_g_r {bin_val_pairs pair_weight} {
     }
     return [list $x_gofr $y_gofr]
 }
+
+#################################################################
+#
+# Description:
+#       Method to compute S(q)
+#
+# Input parameters:
+#       y_gofr                  - An array of g(r) values
+#       contributions_file_path - File path to write all r-bin contributions to each q. If empty, no file is written. 
+#
+# Return values:
+#       computed S(q) - An array of [q, S(q)] pairs
+#
+#################################################################
 
 proc ::SQGUI::get_s_q {y_gofr contributions_file_path} {
     global total_S_q_pos_contributions
@@ -296,126 +330,22 @@ proc ::SQGUI::get_s_q {y_gofr contributions_file_path} {
         close $fp
     }
 
-    return [list $sqx $sqy $maxIdx]
+    return [list $sqx $sqy]
 }
 
-proc ::SQGUI::get_partial_s_q {y_gofr contributions_file_path element_pair pair_weight} {
-    global selection_S_q_pos_contributions
-    global selection_S_q_neg_contributions
-
-    set tcl_precision 12
-    variable delta
-    variable rmax
-    variable pi
-    variable min_q
-    variable max_q
-    variable delta_q
-    variable density
-    variable useLorch
-    variable lorchC
-
-    set numbins [expr $rmax / $delta]
-    set maxIdx 0
-    set got_Error 0
-    set fp {}
-    set pos_neg_lines {}
-    set rbin_contributions_to_S_q {}    
-    set adjusted_max_q [expr $max_q + [expr $delta_q / 100]]
-
-    ### add code write the rbin_contributions values to a file (for each ele-pair, for each q add all rbin_contributions)
-    if {[string length $contributions_file_path]} {
-        if {[catch {open $contributions_file_path a} fp]} then {
-            set got_Error 1
-            tk_dialog .errmsg {viewSq Error} "There was an error opening the file '$contributions_file_path'. Cannot write r contributions to file anymore." error 0 Dismiss
-        } else {
-            set pline $element_pair
-            append plie ","
-            append pline $pair_weight 
-            puts $fp $pline
-        }
-    } else {
-        set got_Error 1
-    }
-
-    for {set cur_q $min_q} {$cur_q <= $max_q} {set cur_q [expr {$cur_q + $delta_q}]} {
-        set maxIdx $cur_q   
-        set varx $cur_q
-        set vary 0.0
-        set rbin_contributions {}
-        set pos_contribution 0
-        set neg_contribution 0
-        set rbin_contributions_for_q {}     
-
-        for {set r 0} {$r < $numbins} {incr r} {
-            set glist_item [lindex $y_gofr $r]
-            set sin_expr [expr $varx * $r * $delta]         
-            set sin_val [expr sin($sin_expr) ]
-            set lorch 1
-            set lorchTerm 1
-            if {$useLorch==1 && $r!=0} {
-                set lorchTerm [expr $pi * $r * $delta/ $lorchC]
-                set lorch [expr [expr sin($lorchTerm)] / $lorchTerm]
-            }
-            set temp_expr [expr $glist_item - 1.0 ]
-            set temp_vary1 [expr $r * $delta * $temp_expr] 
-            set test_temp [expr $sin_val / $varx]
-            set test_temp [expr $test_temp * $lorch]
-            set temp_vary2 [expr $temp_vary1 * $test_temp]
-            set temp_vary2 [expr $temp_vary2 * 4 * $pi * $density * $delta]
-            set temp_vary2 [expr $temp_vary2 * $pair_weight]
-            set vary [expr $vary + $temp_vary2]
-            lappend rbin_contributions $temp_vary2         
-            if {$temp_vary2>=0} {
-                set pos_contribution [expr $pos_contribution + $temp_vary2]
-            } else {
-                set neg_contribution [expr $neg_contribution + $temp_vary2]
-            }
-        }
-
-        if {[dict exists $selection_S_q_pos_contributions $varx]==1} then {
-            dict set selection_S_q_pos_contributions $varx [expr $pos_contribution + [dict get $selection_S_q_pos_contributions $varx]]
-        } else {
-            dict append selection_S_q_pos_contributions $varx $pos_contribution 
-        }
-
-        if {[dict exists $selection_S_q_neg_contributions $varx]==1} then {
-            dict set selection_S_q_neg_contributions $varx [expr $neg_contribution + [dict get $selection_S_q_neg_contributions $varx]]
-        } else {            
-            dict append selection_S_q_neg_contributions $varx $neg_contribution
-        }
-
-        lappend rbin_contributions_to_S_q $rbin_contributions
-        if {$got_Error==0} {
-            set out_line $varx
-            append out_line ","
-            append out_line [join $rbin_contributions ","]
-            append out_line ","
-            append out_line $vary
-            puts $fp $out_line
-
-            set temp_line ""
-            append temp_line $varx
-            append temp_line ","
-            append temp_line $pos_contribution
-            append temp_line ","
-            append temp_line $neg_contribution
-            lappend pos_neg_lines $temp_line
-        }
-
-        lappend sqx $varx
-        lappend sqy $vary
-    }
-
-    if {$got_Error==0} {
-        puts $fp "*****"
-        foreach {line} $pos_neg_lines {
-            puts $fp $line
-        }
-        puts $fp "*****"
-        close $fp
-    }
-    return [list $sqx $sqy $rbin_contributions_to_S_q]
-}
+#################################################################
+#
+# Description:
+#       Method to compute partial S(q)
+#
+# Input parameters:
+#       y_gofr          - An array of g(r) values
+#       pair_weight     - Weight of the element type pair associated with the partial
+#
+# Return values:
+#       computed partial S(q) along with its components - An array of [q, S(q), positive component of S(q), negative component of S(q)] items
+#
+#################################################################
 
 proc ::SQGUI::get_partial_s_q_with_contributions {y_gofr pair_weight} {
     set s_q_pos_contributions {}
@@ -478,7 +408,22 @@ proc ::SQGUI::get_partial_s_q_with_contributions {y_gofr pair_weight} {
     return [list $sqx $sqy $s_q_pos_contributions $s_q_neg_contributions $rbin_contributions_to_S_q]
 }
 
-proc ::SQGUI::get_formfactor_weighted_partial_s_q {y_gofr weight pair_formfactor_list contributions_file_path element_pair } {
+#################################################################
+#
+# Description:
+#       Method to compute form factor weighted partial S(q)
+#
+# Input parameters:
+#       y_gofr                  - An array of g(r) values
+#       weight                  - Weight of the element type pair associated with the partial
+#       pair_formfactor_list    - An array of computed form factors at each q of the element type pair associated with the partial
+#
+# Return values:
+#       computed form factor weighted partial S(q) - An array of [q, S(q), all r-bin contribution to S(q)] items
+#
+#################################################################
+
+proc ::SQGUI::get_formfactor_weighted_partial_s_q {y_gofr weight pair_formfactor_list} {
     global selection_weighted_S_q_pos_contributions
     global selection_weighted_S_q_neg_contributions
     global all_same_elements_weights
@@ -497,24 +442,9 @@ proc ::SQGUI::get_formfactor_weighted_partial_s_q {y_gofr weight pair_formfactor
 
     set numbins [expr $rmax / $delta]
     set maxIdx 0
-    set got_Error 0
-    set fp {}
-    set pos_neg_lines {}
     set i_idx 0
     set rbin_contributions_to_ff_S_q {}
     set adjusted_max_q [expr $max_q + [expr $delta_q / 100]]
-
-    ### add code write the rbin_contributions values to a file (for each ele-pair, for each q add all rbin_contributions)
-    if {[string length $contributions_file_path]} {
-        if {[catch {open $contributions_file_path a} fp]} then {
-            set got_Error 1
-            tk_dialog .errmsg {viewSq Error} "There was an error opening the file '$contributions_file_path'. Cannot write r contributions to file anymore." error 0 Dismiss
-        } else {
-            puts $fp $element_pair
-        }
-    } else {
-        set got_Error 1
-    }
 
     for {set cur_q $min_q} {$cur_q <= $max_q} {set cur_q [expr {$cur_q + $delta_q}]} {
         set maxIdx $cur_q   
@@ -580,39 +510,28 @@ proc ::SQGUI::get_formfactor_weighted_partial_s_q {y_gofr weight pair_formfactor
         }
 
         lappend rbin_contributions_to_ff_S_q $rbin_contributions
-        if {$got_Error==0} {
-            set out_line $varx
-            append out_line ","
-            append out_line [join $rbin_contributions ","]
-            append out_line ","
-            append out_line $vary
-            puts $fp $out_line
-
-            set temp_line ""
-            append temp_line $varx
-            append temp_line ","
-            append temp_line $pos_contribution
-            append temp_line ","
-            append temp_line $neg_contribution
-            append temp_line ","
-            append temp_line $vary
-            lappend pos_neg_lines $temp_line
-        }
-
         lappend sqx $varx
         lappend sqy $vary
         incr i_idx
     }
 
-    if {$got_Error==0} {
-        puts $fp "*****"
-        foreach {line} $pos_neg_lines {
-            puts $fp $line
-        }
-        close $fp
-    }
     return [list $sqx $sqy $rbin_contributions_to_ff_S_q]
 }
+
+#################################################################
+#
+# Description:
+#       Method to compute form factor weighted partial S(q)
+#
+# Input parameters:
+#       y_gofr                  - An array of g(r) values
+#       weight                  - Weight of the element type pair associated with the partial
+#       pair_formfactor_list    - An array of computed form factors at each q of the element type pair associated with the partial
+#
+# Return values:
+#       computed form factor weighted partial S(q) along with its components - An array of [S(q), positive component of S(q), negative component of S(q)] items
+#
+#################################################################
 
 proc ::SQGUI::get_formfactor_weighted_partial_s_q_with_contributions {y_gofr weight pair_formfactor_list } {
     global all_same_elements_weights
@@ -633,9 +552,6 @@ proc ::SQGUI::get_formfactor_weighted_partial_s_q_with_contributions {y_gofr wei
 
     set numbins [expr $rmax / $delta]
     set maxIdx 0
-    set got_Error 0
-    set fp {}
-    set pos_neg_lines {}
     set i_idx 0
     set rbin_contributions_to_ff_S_q {}
     set adjusted_max_q [expr $max_q + [expr $delta_q / 100]]
@@ -699,25 +615,24 @@ proc ::SQGUI::get_formfactor_weighted_partial_s_q_with_contributions {y_gofr wei
     return [list $sqy $s_q_pos_contributions $s_q_neg_contributions]
 }
 
-proc ::SQGUI::convertListToDict {valuesList} {
-    variable delta
-    variable rmax
-    
-    set pairsDict [dict create]
-    set numbins [expr $rmax / $delta]
-    
-    for {set r 0} {$r < $numbins} {incr r} {
-        if {[lindex $valuesList $r] >0} {
-            dict append pairsDict $r [lindex $valuesList $r]
-        }
-    }
-    return $pairsDict
-}
+#################################################################
+#
+# Description:
+#       Method responsible for the entire initial calculation phase. This method takes care of
+#           1. Reading the selected molfile and communicating with python script to process each frame and aggregate the counts
+#           2. Read the file written by the python script to create a bin count matrix
+#           3. Calculate and plot the total g(r), S(q) and form factor weighted S(q) plots
+#
+# Input parameters:
+#       None
+#
+# Return values:
+#       None
+#
+#################################################################
 
 proc ::SQGUI::runSofQ {} {
     global bin_totals
-    global bin_matrix
-    global atom_numbers
     global subGroupPair_counts
     global total_S_q_pos_contributions
     global total_S_q_neg_contributions
@@ -725,11 +640,6 @@ proc ::SQGUI::runSofQ {} {
     global allPairsAggregated_weights
     global all_same_elements_weights
     global all_same_group_pair_formfactors
-
-    global group_totals
-    global group_matrices
-    global group_bulk_stats
-    global group_pair_num_atoms
     global total_distances_count
     
     variable pi
@@ -756,10 +666,11 @@ proc ::SQGUI::runSofQ {} {
     variable n_frames
     variable density
     variable density_normalized
-    # variable total_distances_count
     variable all_distances_count
     variable auto_call
-
+    
+    set bin_matrix {}
+    set atom_numbers {}
     set vmd_Path $::env(VMDDIR)
     set errmsg {}
     set cannotplot [catch {package require multiplot 1.1}]
@@ -880,7 +791,7 @@ proc ::SQGUI::runSofQ {} {
     set dq [expr $qmax / $numbins]  
     puts "Calculating S(q)..."
     set sofq_result [get_s_q $y_gofr $total_S_q_contributions_file]
-     # get_s_q method return a list of lists where index 
+    # get_s_q method return a list of lists where index 
     #       0- list of qs in S(q)
     #       1- list of S(q) values
     set sqx [lindex $sofq_result 0]
@@ -1003,22 +914,20 @@ proc ::SQGUI::runSofQ {} {
     $w.foot configure -state disabled
 }
 
-# proc ::SQGUI::testBinSummands {total_dist} {
-#     global bin_totals
-#     puts "total: $total_dist"
-
-#     for {set i 0} {$i < [llength $bin_totals]} {incr i} {
-#         set weight [expr double([lindex $bin_totals $i])/$total_dist]
-#         set counts_bin [dict create]
-#         dict append counts_bin $i [lindex $bin_totals $i]
-#         set partial_gofr [get_partial_g_r $counts_bin $weight]
-#         set y_partial_gofr [lindex $partial_gofr 1]
-#         set partial_sofq [get_partial_s_q $y_partial_gofr "" "" $weight]  
-#         set y_partial_sofq [lindex $partial_sofq 1] 
-        
-#         puts "$counts_bin >>> $weight >>> $y_partial_sofq"
-#     }
-# }
+#################################################################
+#
+# Description:
+#       Method to calculate form factor for element pairs. This method takes care of
+#           1. Reading the atomic form factors file and elements.ndx file
+#           2. identify all possible element pairs and precompute form factors at all possible q's for each element pair
+#
+# Input parameters:
+#       None
+#
+# Return values:
+#       None
+#
+#################################################################
 
 proc ::SQGUI::readElementsFile {} {
     global atoms_groupNames
@@ -1190,6 +1099,16 @@ proc ::SQGUI::readElementsFile {} {
     }
     return 0
 }
+
+#################################################################
+#
+# Description:
+#
+# Input parameters:
+#
+# Return values:
+#
+#################################################################
 
 proc ::SQGUI::ProcessAllsubGroupPairs {} {
     global atoms_groupNames
@@ -1668,6 +1587,16 @@ proc ::SQGUI::ProcessAllsubGroupPairs {} {
     set auto_call 0    
 }
 
+#################################################################
+#
+# Description:
+#
+# Input parameters:
+#
+# Return values:
+#
+#################################################################
+
 proc ::SQGUI::writeContributions {filePtr atom neighbour_contributions} {
     set cur_atom_contribution {}
     set out_line $atom
@@ -1706,6 +1635,17 @@ proc ::SQGUI::writeContributions {filePtr atom neighbour_contributions} {
 #       type1-type2: weight
 #       type2-type2: weight
 #   }
+
+#################################################################
+#
+# Description:
+#
+# Input parameters:
+#
+# Return values:
+#
+#################################################################
+
 proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
 
     global groupPair_formfactors
@@ -1819,7 +1759,7 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
         set y_partial_gofr_all [lindex $partial_gofr_result_all 1]
 
         # Compute form factor weighted s(q) for current group pair
-        set weighted_partial_sofq_result [get_formfactor_weighted_partial_s_q $y_partial_gofr_all $pair_weight_all_denominator $cur_pair_formfactor_list "" $grp_pair]
+        set weighted_partial_sofq_result [get_formfactor_weighted_partial_s_q $y_partial_gofr_all $pair_weight_all_denominator $cur_pair_formfactor_list]
 
         set x_weighted_partial_sofq [lindex $weighted_partial_sofq_result 0]
         set y_weighted_partial_sofq [lindex $weighted_partial_sofq_result 1]
@@ -1914,14 +1854,43 @@ proc ::SQGUI::computePartialsForSelections {counts_dict weights_dict} {
     }           
 }
 
+#################################################################
+#
+# Description:
+#
+# Input parameters:
+#
+# Return values:
+#
+#################################################################
+
 proc ::SQGUI::printatomCounts {atoms_sel1 atoms_sel2 atoms_subSel1 atoms_subSel2} {
     puts "Number of atoms in selection1: $atoms_sel1   Number of atoms in selection2: $atoms_sel2"
 }
+
+#################################################################
+#
+# Description:
+#
+# Input parameters:
+#
+# Return values:
+#
+#################################################################
 
 proc ::SQGUI::printdistanceCounts {selectionDistances subSelectionDistances all_distances_count} {
     puts "Distances in selection: $selectionDistances   Total Distances in bins: $all_distances_count"
 }
 
+#################################################################
+#
+# Description:
+#
+# Input parameters:
+#
+# Return values:
+#
+#################################################################
 ##### set selection_atom_contributions dict to non-FF / FF based on the UI selection.
 proc ::SQGUI::computeSelections {} {
 
@@ -2338,7 +2307,6 @@ proc ::SQGUI::computeSelections {} {
 
         computePartialsForSelections $selection_groups_counts $selection_groups_weights
         puts "Completed!"
-        #testBinSummands $all_distances_count
 
     }
 
@@ -2358,6 +2326,16 @@ proc ::SQGUI::computeSelections {} {
     $w.in1.bt configure -from $minval -to $maxval -resolution $tick_interval  -tickinterval [expr $maxval-$minval] -showvalue true
     update idletasks
 }
+
+#################################################################
+#
+# Description:
+#
+# Input parameters:
+#
+# Return values:
+#
+#################################################################
 
 proc ::SQGUI::DisplayStatsForSelections {} {
 
@@ -2668,6 +2646,16 @@ proc ::SQGUI::DisplayStatsForSelections {} {
     $w.in2.topNframe.at configure -command [namespace code UpdateRenderer]
     $w.in2.topNframe.bt configure -command [namespace code UpdateRenderer]
 }
+
+#################################################################
+#
+# Description:
+#
+# Input parameters:
+#
+# Return values:
+#
+#################################################################
 
 proc ::SQGUI::UpdateRenderer {val} {
     
@@ -3041,15 +3029,15 @@ proc ::SQGUI::UpdateRenderer {val} {
     }
 }
 
-
-
-
-
-
-
-
-
-
+#################################################################
+#
+# Description:
+#
+# Input parameters:
+#
+# Return values:
+#
+#################################################################
 
 proc ::SQGUI::computeRBins {} {
 
@@ -3057,7 +3045,6 @@ proc ::SQGUI::computeRBins {} {
     global atoms_groupNames 
     global total_distances_count
     
-
     variable newSelection1
     variable newSelection2
     variable rbinRange
@@ -3136,14 +3123,11 @@ proc ::SQGUI::computeRBins {} {
         }
     }
 
-
-
     # BEGIN COUNTS FOR BOX METRICS
     set num_atoms_minus_one [expr $num_atoms - 1]
     set total_num_distances_in_box [expr $num_atoms * $num_atoms_minus_one / 2]
 
     puts "Total number distances in box:  $total_num_distances_in_box" 
-
 
     set num_atoms_rbins_sel1 [llength $atom_numbers_sel1]
     set num_atoms_rbins_sel2 [llength $atom_numbers_sel2]
@@ -3159,21 +3143,12 @@ proc ::SQGUI::computeRBins {} {
 
     puts "Total number of atoms in intersection of selections 1 & 2:  $count_overlap_rbins_sel1_sel2"
 
-
     set distances_due_to_overlap_rbins_sel1_sel2 [expr $count_overlap_rbins_sel1_sel2 * [expr $count_overlap_rbins_sel1_sel2 - 1] / 2]
-
-#    puts "distances_due_to_overlap_rbins_sel1_sel2:  $distances_due_to_overlap_rbins_sel1_sel2"
-
     set distances_due_to_non_overlap_rbins_sel1_sel2 [expr [expr $num_atoms_rbins_sel1 - $count_overlap_rbins_sel1_sel2] * [expr $num_atoms_rbins_sel2 - $count_overlap_rbins_sel1_sel2]]
-
-#    puts "distances_due_to_non_overlap_rbins_sel1_sel2:  $distances_due_to_non_overlap_rbins_sel1_sel2"
-
     set percent_distance_rbins_selection_within_box [expr 100 * ([expr double($distances_due_to_non_overlap_rbins_sel1_sel2) / double($total_num_distances_in_box)] + [expr double($distances_due_to_overlap_rbins_sel1_sel2) / double($total_num_distances_in_box)])]
 
     # PRINT FINAL PERCENT FOR BOX METRIC
     puts "***Percent selected distance types out of all distances in box***:  $percent_distance_rbins_selection_within_box"
-
-
 
     # BEGIN COUNTS FOR All RBIN METRIC
         foreach i $atom_numbers_sel1 {
@@ -3190,7 +3165,6 @@ proc ::SQGUI::computeRBins {} {
                 if {[dict exists $subGroupPair_counts $searchKey]} {                
                     set atomPairCount [dict get $subGroupPair_counts $searchKey]
 
-
                     foreach key [dict keys $atomPairCount] {
                         set binCount [dict get $atomPairCount $key]
                         if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
@@ -3203,8 +3177,6 @@ proc ::SQGUI::computeRBins {} {
 
                 if {[dict exists $subGroupPair_counts $searchKeyReverse]} {
                     set atomPairCount [dict get $subGroupPair_counts $searchKeyReverse]
-
-
 
                     foreach key [dict keys $atomPairCount] {
                         set binCount [dict get $atomPairCount $key]
@@ -3226,8 +3198,6 @@ proc ::SQGUI::computeRBins {} {
     # PRINT FINAL PERCENT FOR All RBIN METRIC
     puts "***Percent selected distance types represent out of all distances within rmax***:  $percent_distance_rbins_selection_within_rmax"
 
-
-
     # BEGIN COUNTS FOR USER-SELECTED RBIN METRIC
         foreach i $atom_numbers_sel1 {
             foreach j $atom_numbers_sel2 {
@@ -3245,12 +3215,12 @@ proc ::SQGUI::computeRBins {} {
 
                     foreach key [dict keys $atomPairCount] {
                         if {[lsearch -exact $binsOfInterest $key] >=0} {
-                        set binCount [dict get $atomPairCount $key]
+                            set binCount [dict get $atomPairCount $key]
                             if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
                                 incr count_all_selected_rbins_sel1_sel2 [expr $binCount / 2]
                             } else {
                                 incr count_all_selected_rbins_sel1_sel2 [expr $binCount]   
-                        }
+                            }
                         }
                     }
                 }
@@ -3260,17 +3230,17 @@ proc ::SQGUI::computeRBins {} {
 
                     foreach key [dict keys $atomPairCount] {
                         if {[lsearch -exact $binsOfInterest $key] >=0} {
-                        set binCount [dict get $atomPairCount $key]
+                            set binCount [dict get $atomPairCount $key]
                             if { [lsearch -exact $atom_numbers_sel1 $j] >=0 && [lsearch -exact $atom_numbers_sel2 $i] >=0} {
                                 incr count_all_selected_rbins_sel1_sel2 [expr $binCount / 2]
                             } else {
                                 incr count_all_selected_rbins_sel1_sel2 [expr $binCount]     
-                        }
+                            }
                         }
                     }
                 }
-               }
-            }   
+            }
+        }   
 
         # count all distances within r-bins
         foreach i $sel_all {
@@ -3306,13 +3276,22 @@ proc ::SQGUI::computeRBins {} {
 
     # PRINT FINAL PERCENT FOR USER-SELECTED RBIN METRIC
     puts "***Percent of selected distances within selected r-bins***:  $percent_distance_selected_rbins_selection_within_rbins"
-
-
 }
 
-#################
-# build GUI.
-proc ::SQGUI::sqgui {args} {    
+#################################################################
+#
+# Description:
+#       Method to construct the GUI
+#
+# Input parameters:
+#       None
+#
+# Return values:
+#       None
+#
+#################################################################
+
+proc ::SQGUI::sqgui {} {
 
     variable w
     variable molid
@@ -3760,7 +3739,19 @@ proc ::SQGUI::sqgui {args} {
     trace variable ::SQGUI::molid w ::SQGUI::EnDisable
 }
 
-# enable/disable buttons that depend on a proper molecule being selected
+#################################################################
+#
+# Description:
+#       Method to enable/disable UI elements based on calculations completed
+#
+# Input parameters:
+#       None
+#
+# Return values:
+#       None
+#
+#################################################################
+
 proc ::SQGUI::EnDisable {args} {
     variable molid
     variable w
@@ -3901,8 +3892,20 @@ proc ::SQGUI::EnDisable {args} {
     }
 }
 
-# update molecule list
-proc ::SQGUI::UpdateMolfile {args} {
+#################################################################
+#
+# Description:
+#       Method to update the input file list (molfile list) to choose from
+#
+# Input parameters:
+#       None
+#
+# Return values:
+#       None
+#
+#################################################################
+
+proc ::SQGUI::UpdateMolfile {} {
     variable w
     variable moltxt
     variable molid
@@ -3937,7 +3940,20 @@ proc ::SQGUI::UpdateMolfile {args} {
     }
 }
 
-# callback for VMD menu entry
+
+#################################################################
+#
+# Description:
+#       Callback method for VMD menu entry
+#
+# Input parameters:
+#       None
+#
+# Return values:
+#       None
+#
+#################################################################
+
 proc viewsq_tk_cb {} {
   ::SQGUI::sqgui 
   return $::SQGUI::w
