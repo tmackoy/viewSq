@@ -3182,7 +3182,7 @@ proc ::SQGUI::computeRBins {} {
     set percent_distance_rbins_selection_within_box [expr 100 * ([expr double($distances_due_to_non_overlap_rbins_sel1_sel2) / double($total_num_distances_in_box)] + [expr double($distances_due_to_overlap_rbins_sel1_sel2) / double($total_num_distances_in_box)])]
 
     # Print final percent for box metric
-    puts "***Percent selected distance types out of all distances in box***:  $percent_distance_rbins_selection_within_box"
+    puts "***Percent of selected distance types out of all distances in box***:  $percent_distance_rbins_selection_within_box"
 
     # Begin counts for all r-bin metric
         foreach i $atom_numbers_sel1 {
@@ -3230,7 +3230,7 @@ proc ::SQGUI::computeRBins {} {
     set percent_distance_rbins_selection_within_rmax [expr 100 * [expr double($count_all_rbins_sel1_sel2) / double($total_distances_count)]]
 
     # Print final percent for all r-bin metric
-    puts "***Percent selected distance types represent out of all distances within rmax***:  $percent_distance_rbins_selection_within_rmax"
+    puts "***Percent of selected distance types out of all distances within rmax***:  $percent_distance_rbins_selection_within_rmax"
 
     # Begin counts for user-selected r-bin metric
     foreach i $atom_numbers_sel1 {
