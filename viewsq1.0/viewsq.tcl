@@ -3161,13 +3161,13 @@ proc ::SQGUI::computeRBins {} {
     set num_atoms_minus_one [expr $num_atoms - 1]
     set total_num_distances_in_box [expr $num_atoms * $num_atoms_minus_one / 2]
 
-    puts "Total number distances in box:  $total_num_distances_in_box" 
+    puts "Total number of distances in box:  $total_num_distances_in_box" 
 
     set num_atoms_rbins_sel1 [llength $atom_numbers_sel1]
     set num_atoms_rbins_sel2 [llength $atom_numbers_sel2]
 
-    puts "Total number atoms in r-bins module selection 1:  $num_atoms_rbins_sel1"
-    puts "Total number atoms in r-bins module selection 2:  $num_atoms_rbins_sel2"
+    puts "Total number of atoms in r-bins module selection 1:  $num_atoms_rbins_sel1"
+    puts "Total number of atoms in r-bins module selection 2:  $num_atoms_rbins_sel2"
 
     foreach id $atom_numbers_sel1 {
         if {[lsearch -exact $atom_numbers_sel2 $id] >= 0} {
@@ -3224,7 +3224,7 @@ proc ::SQGUI::computeRBins {} {
             }
         }
 
-    puts "Total distances within rmax:  $total_distances_count"
+    puts "Total number of distances within rmax:  $total_distances_count"
     puts "Count of selected distances within rmax:  $count_all_rbins_sel1_sel2"
 
     set percent_distance_rbins_selection_within_rmax [expr 100 * [expr double($count_all_rbins_sel1_sel2) / double($total_distances_count)]]
@@ -3302,7 +3302,7 @@ proc ::SQGUI::computeRBins {} {
         }
     }
 
-    puts "Total distances within selected r-bins:  $count_all_selected_rbins"
+    puts "Total number of distances within selected r-bins:  $count_all_selected_rbins"
     puts "Count of selected distances within selected r-bins:  $count_all_selected_rbins_sel1_sel2"
     
     set percent_distance_selected_rbins_selection_within_rbins [expr 100 * [expr double($count_all_selected_rbins_sel1_sel2) / double($count_all_selected_rbins)]]
