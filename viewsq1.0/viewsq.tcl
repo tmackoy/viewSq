@@ -3302,10 +3302,9 @@ proc ::SQGUI::computeRBins {} {
         }
     }
 
-    
+    puts "Total distances within selected r-bins:  $count_all_selected_rbins"
     puts "Count of selected distances within selected r-bins:  $count_all_selected_rbins_sel1_sel2"
-    puts "count_all_selected_rbins:  $count_all_selected_rbins"
-
+    
     set percent_distance_selected_rbins_selection_within_rbins [expr 100 * [expr double($count_all_selected_rbins_sel1_sel2) / double($count_all_selected_rbins)]]
 
     # Print final percent for user-selected r-bin metric
