@@ -60,7 +60,7 @@ Usage
 ===============
 Invoke VMD and look for the plug-in (viewSq) under Extensions->Analysis.
 
-A [tutorial](https://github.com/tmackoy/viewSq/wiki/Tutorial:--Water) can be found on the [wiki](https://github.com/tmackoy/viewSq/wiki)
+A [tutorial](https://github.com/tmackoy/viewSq/tree/master/tutorials/spce_water) and [wiki](https://github.com/tmackoy/viewSq/wiki) are available.
 
 
 License
