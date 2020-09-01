@@ -24,7 +24,7 @@ Invoke VMD and look for the plug-in under Extensions->Analysis.
 
 ### OSX ###
 
-Due to memory restrictions, in order to reasonably use viewSq with over ~10,000 atoms in Mac OS you will probably want to compile a 64-bit VMD version. The VMD website may offer some 64-bit pre-compiled versions which can be downloaded.
+Due to memory restrictions, in order to reasonably use viewSq with over ~10,000 atoms in Mac OS you will probably want to use a 64-bit VMD version. The [VMD website](https://www.ks.uiuc.edu/Development/Download/download.cgi?PackageName=VMD) may offer some 64-bit versions.
 
 
 1. Add the following line to /Applications/VMD 1.9.3.app/Contents/vmd/scripts/loadplugins.tcl
@@ -40,7 +40,7 @@ Ensure Python 3.* is the default python.
 
 ### WINDOWS ###
 
-Due to memory restrictions, in order to reasonably use viewSq with over ~10,000 atoms in Windows you will probably want to compile a 64-bit VMD version. The VMD website may offer some 64-bit pre-compiled versions which can be downloaded. 64-bit Linux versions of VMD with viewSq can also be run using [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10) and an X server.
+Due to memory restrictions, in order to reasonably use viewSq with over ~10,000 atoms in Windows you will probably want to use a 64-bit VMD version. The [VMD website](https://www.ks.uiuc.edu/Development/Download/download.cgi?PackageName=VMD) may offer some 64-bit versions. 64-bit Linux versions of VMD with viewSq can also be run using [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10) and an X server.
 
 
 1. Add the following line to \VMD\scripts\vmd\loadplugins.tcl
