@@ -57,7 +57,7 @@ Ensure Python 3.* is in the Windows path.
 
 Usage
 ===============
-Invoke VMD and look for the plug-in (viewSq) under Extensions->Analysis.
+Invoke VMD and look for the viewSq module under Extensions->Analysis.
 
 A tutorial is available [here](https://github.com/tmackoy/viewSq/tree/master/tutorials/spce_water) and [wiki](https://github.com/tmackoy/viewSq/wiki).
 
