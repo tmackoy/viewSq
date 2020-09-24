@@ -18,6 +18,8 @@ vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
 
 3. Copy the file "Calculate_rdf_stats_py.py" to /usr/local/lib/vmd/scripts/python
 
+Ensure Python 3.* is the default python.
+
 Invoke VMD and look for the plug-in under Extensions->Analysis. 
 
 
