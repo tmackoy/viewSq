@@ -31,6 +31,8 @@ If you publish work which used viewSq, please cite:
 
 /viewSq/tutorials/spce_water/elements.ndx -- Gromacs stype NDX file defining whether each of the 3000 water atoms are Hydrogen or Oxygen). This file is required for viewSq to perform its form factor weighted calculations, and a properly configured version of it must always accompany a simulation processed by viewSq.
 
+/viewSq/tutorials/spce_water/box_lengths.txt_ -- Optional file which contains N rows, where N is number of simulation frames. The format of rows is three doubles, space delimited, where each double indicates x, y, and z box lengths for that frame. Raname to box_lengths.txt to use.
+
 /viewSq/tutorial.pdf -- PDF file containing instructions for running the included tutorial (single frame of SPC/E water).
 
 /viewSq/README -- Text file containing viewSq overview, installation and usage instructions, etc.
