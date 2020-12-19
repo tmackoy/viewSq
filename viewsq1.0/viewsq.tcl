@@ -732,7 +732,7 @@ proc ::SQGUI::runSofQ {} {
                 set ::SQGUI::testscript $scriptpath
                 # Comment the below line to not call python script and re-use the existing output from the python.
                 # Command line call to run python script Calculate_rdf_stats_py.py
-                set status [exec $::SQGUI::pybin $::SQGUI::testscript $folder_path $delta $rmax $is_first_frame $is_last_frame]
+                set status [exec $::SQGUI::pybin $::SQGUI::testscript $folder_path $delta $rmax $frm $is_first_frame $is_last_frame]
                 set is_first_frame 0
                 incr n_frames 
             }

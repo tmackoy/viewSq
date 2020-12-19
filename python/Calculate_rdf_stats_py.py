@@ -8,16 +8,18 @@ import datetime as dt
 # print("Start:",dt.datetime.now())
 output_file = 'GofRValues.txt'
 elements_file = 'elements.ndx'
+boxLengths_file = 'box_lengths.txt'
  
 if len(sys.argv) > 1:
     inp_file = sys.argv[1]
     deltaR = float(sys.argv[2])
     maxR = float(sys.argv[3])
-    if sys.argv[4] == '0':
+    curFrame = float(sys.argv[4])
+    if sys.argv[5] == '0':
         is_first_frame = False
     else:
         is_first_frame = True
-    if sys.argv[5] == '0':
+    if sys.argv[6] == '0':
         is_last_frame = False
     else:
         is_last_frame = True
@@ -44,6 +46,27 @@ sub_groups_dict = defaultdict(str)
 inp_file_dir = os.path.dirname(inp_file)
 output_file = inp_file_dir + '//' + output_file
 elements_file = inp_file_dir + '//' + elements_file
+boxLengths_file = inp_file_dir + '//' + boxLengths_file
+boxLengths_file_exists = False
+boxLengths=[]
+
+
+# Check if box lengths file exists. If exists use the frame number to read the box lengths
+# of the current frame. If file does not exist calculate the lengths from the atom positions.
+if os.path.isfile(boxLengths_file):
+    boxLengths_file_exists = True
+    with open(boxLengths_file, mode='r') as inp_lengths:
+        index=0
+#        for line in inp_lengths:
+#            if index==curFrame:
+#                line = line.rstrip()
+#                boxLengths = line.split(' ')
+        for line in inp_lengths:
+            if index==curFrame:
+                line = line.rstrip()
+                boxLengths = line.split(' ')
+                break
+            index+=1
  
 # Reading the elements.ndx file and store the contents in a dictionary.
 # elements_dict: Dictionary that stores element types as keys and atom numbers as values
@@ -133,11 +156,16 @@ for atom in atoms:
     for j in range(0, bins_count):
         atom_paticipation_in_bins[key].append(0)
  
-# calculate minx, maxx, miny, maxy...
-box_lenx = max(x[3] for x in atoms) - min(x[3] for x in atoms)
-box_leny = max(y[4] for y in atoms) - min(y[4] for y in atoms)
-box_lenz = max(z[5] for z in atoms) - min(z[5] for z in atoms)
- 
+if boxLengths_file_exists:
+    box_lenx = float(boxLengths[0])
+    box_leny = float(boxLengths[1])
+    box_lenz = float(boxLengths[2])
+else:
+    # calculate box lengths using min and max values in each dimension.
+    box_lenx = max(x[3] for x in atoms) - min(x[3] for x in atoms)
+    box_leny = max(y[4] for y in atoms) - min(y[4] for y in atoms)
+    box_lenz = max(z[5] for z in atoms) - min(z[5] for z in atoms)
+
 # Ported from the C++ version written by Travis.
 total_pairs = 0
 for i in range(0, len(atoms)):
