@@ -18,17 +18,14 @@ vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
 
 3. Copy the file "Calculate_rdf_stats_py.py" to /usr/local/lib/vmd/scripts/python
 
-Ensure Python 3.* is the default python.
-
 Invoke VMD and look for the plug-in under Extensions->Analysis. 
+
+Ensure Python 3.* is the default. If VMD asks for a path to Python, the following may work:  /usr/bin/python3.
 
 
 ### OSX ###
 
-Due to memory restrictions, in order to reasonably use viewSq with over ~10,000 atoms in Mac OS you will probably want to use a 64-bit VMD version. The [VMD website](https://www.ks.uiuc.edu/Development/Download/download.cgi?PackageName=VMD) may offer some 64-bit versions.
-
-
-1. Add the following line to /Applications/VMD 1.9.3.app/Contents/vmd/scripts/loadplugins.tcl
+1. Add the following line to /Applications/VMD 1.9.3.app/Contents/vmd/scripts/vmd/loadplugins.tcl
 
 vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
 
@@ -36,13 +33,12 @@ vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
 
 3. Copy the file "Calculate_rdf_stats_py.py" to /Applications/VMD 1.9.3.app/Contents/vmd/scripts/python
 
-Ensure Python 3.* is the default python.
+Ensure Python 3.* is the default. 
+
+VMD 1.9.3 may not be compatible with recent MacOS versions: https://www.ks.uiuc.edu/Research/vmd/macosxcatalina.html
 
 
 ### WINDOWS ###
-
-Due to memory restrictions, in order to reasonably use viewSq with over ~10,000 atoms in Windows you will probably want to use a 64-bit VMD version. The [VMD website](https://www.ks.uiuc.edu/Development/Download/download.cgi?PackageName=VMD) may offer some 64-bit versions. 64-bit Linux versions of VMD with viewSq can also be run using [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10) and an X server.
-
 
 1. Add the following line to \VMD\scripts\vmd\loadplugins.tcl
 
@@ -50,11 +46,11 @@ vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
 
 2. Copy the folder "viewsq1.0" to \VMD\plugins\noarch\tcl
 
-3. Copy the file "Calculate_rdf_stats_py.py" to \VMD\scripts\vmd
+3. Copy the file "Calculate_rdf_stats_py.py" to \VMD\scripts\python (the folder may need to be created manually)
 
- When running viewSq, VMD may require you to specify the location of the Python script from step #3.
+Invoke VMD and look for the plug-in under Extensions->Analysis. When running viewSq, VMD may require you to specify the location of the Python script from step #3. Ensure Python 3.* is in the Windows path.
 
-Ensure Python 3.* is in the Windows path.
+Note: 64-bit Linux versions of VMD with viewSq can also be run using Windows Subsystem for Linux (https://docs.microsoft.com/en-us/windows/wsl/install-win10) and an X server.
 
 
 Usage
