@@ -83,13 +83,13 @@ vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
 
 Invoke VMD and look for the plug-in under Extensions->Analysis. 
 
-Ensure Python 3.* is the default.
+Ensure Python 3.* is the default. If a VMD asks for a path to Python, the following may work:  /usr/bin/python3.
 
 
 OSX
 
 
-1. Add the following line to /Applications/VMD 1.9.3.app/Contents/vmd/scripts/loadplugins.tcl
+1. Add the following line to /Applications/VMD 1.9.3.app/Contents/vmd/scripts/vmd/loadplugins.tcl
 
 vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
 
@@ -97,7 +97,9 @@ vmd_install_extension viewsq      viewsq_tk_cb    "Analysis/viewSq"
 
 3. Copy the file "Calculate_rdf_stats_py.py" to /Applications/VMD 1.9.3.app/Contents/vmd/scripts/python
 
-Ensure Python 3.* is the default.
+Ensure Python 3.* is the default. 
+
+VMD 1.9.3 may not be compatible with recent MacOS versions: https://www.ks.uiuc.edu/Research/vmd/macosxcatalina.html
 
 
 WINDOWS
