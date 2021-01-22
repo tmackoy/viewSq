@@ -3,7 +3,7 @@ viewSq
 
 viewSq is a utility for calculating, analyzing, and visualizing static structure factors (S(q)) from trajectories produced using molecular dynamics or Monte Carlo simulations.
 
-A tutorial is available [here](https://github.com/tmackoy/viewSq/tree/master/tutorials/spce_water) and [wiki](https://github.com/tmackoy/viewSq/wiki).
+A tutorial is available [here](https://github.com/tmackoy/viewSq/tree/master/tutorials/spce_water).
 
 Installation
 ===============
@@ -57,7 +57,7 @@ Usage
 ===============
 Invoke VMD and look for the viewSq module under Extensions->Analysis.
 
-A tutorial is available [here](https://github.com/tmackoy/viewSq/tree/master/tutorials/spce_water) and [wiki](https://github.com/tmackoy/viewSq/wiki).
+A tutorial is available [here](https://github.com/tmackoy/viewSq/tree/master/tutorials/spce_water).
 
 
 License
