@@ -7,7 +7,7 @@ A tutorial is available [here](https://github.com/tmackoy/viewSq/tree/master/tut
 
 If you find this code useful in your research, please cite: 
 
-Mackoy, T.; Kale, B.; Papka, M.E.; Wheeler, R.A. viewSq, a Visual Molecular Dynamics (VMD) module for calculating, analyzing, and visualizing X-ray and neutron structure factors from atomistic simulations. *Comput. Phys. Commun.* **2021**, in press.
+Mackoy, T.; Kale, B.; Papka, M.E.; Wheeler, R.A. viewSq, a Visual Molecular Dynamics (VMD) module for calculating, analyzing, and visualizing X-ray and neutron structure factors from atomistic simulations. *Comput. Phys. Commun.* **2021**, *264*, 107881.
 
 Installation
 ===============
